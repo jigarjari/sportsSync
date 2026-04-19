@@ -120,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $turf_name = $_POST['turf_name'];
         $city_id = (int) $_POST['city_id'];
         $location = $_POST['turf_add'];
-        $latitude = (float) $_POST['latitude'];
-        $longitude = (float) $_POST['longitude'];
+        $latitude = !empty($_POST['latitude']) ? (float)$_POST['latitude'] : $turf['latitude'];
+        $longitude = !empty($_POST['longitude']) ? (float)$_POST['longitude'] : $turf['longitude'];
         $description = $_POST['description'];
 
         // ===== UPDATE MAIN TABLE =====
@@ -1018,7 +1018,10 @@ if (!empty($_FILES['turf_images']['name'][0])) {
     });
 
 
-    const defaultLatLng = [21.1702, 72.8311]; // Surat
+    const defaultLatLng = [
+  <?= $turf['latitude'] ?>,
+  <?= $turf['longitude'] ?>
+];// Surat
 
     const map = L.map('map').setView(defaultLatLng, 13);
 
