@@ -2,8 +2,105 @@
 session_start();
 
 $demoMessage = "";
+
+// DB CONNECTION
+$host = "localhost";
+$user = "root";
+$pass = "";
+$db   = "turf_booking_system"; // CHANGE THIS
+
+$conn = new mysqli($host, $user, $pass, $db);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// FORM SUBMIT
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $demoMessage = "Form preview submitted successfully. Database connection is not added yet.";
+
+    // Basic fields
+    $tournament_name = $_POST['tournament_name'];
+    $full_name = $_POST['full_name'];
+    $mobile_number = $_POST['mobile_number'];
+    $email = $_POST['email'];
+    $age = $_POST['age'];
+
+    $team_name = $_POST['team_name'];
+    $captain_name = $_POST['captain_name'];
+    $captain_mobile = $_POST['captain_mobile'];
+    $captain_email = $_POST['captain_email'];
+
+    $emergency_contact = $_POST['team_emergency_contact'];
+    $player_list = $_POST['player_list'];
+    $team_notes = $_POST['team_notes'];
+
+    $accepted_terms = isset($_POST['accept_terms']) ? 1 : 0;
+
+    // FILE UPLOADS
+    function uploadFile($fileInputName) {
+        if (!empty($_FILES[$fileInputName]['name'])) {
+            $targetDir = "uploads/";
+            $fileName = time() . "_" . basename($_FILES[$fileInputName]["name"]);
+            $targetFile = $targetDir . $fileName;
+
+            move_uploaded_file($_FILES[$fileInputName]["tmp_name"], $targetFile);
+
+            return $fileName;
+        }
+        return null;
+    }
+
+    $profile_photo = uploadFile("profile_photo");
+    $team_logo = uploadFile("team_logo");
+
+    // INSERT QUERY (prepared statement)
+    $stmt = $conn->prepare("
+        INSERT INTO tournament_registrations (
+            tournament_name,
+            full_name,
+            mobile_number,
+            email,
+            age,
+            profile_photo,
+            team_name,
+            captain_name,
+            captain_mobile,
+            captain_email,
+            team_logo,
+            emergency_contact,
+            player_list,
+            team_notes,
+            accepted_terms
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $stmt->bind_param(
+        "ssssisssssssssi",
+        $tournament_name,
+        $full_name,
+        $mobile_number,
+        $email,
+        $age,
+        $profile_photo,
+        $team_name,
+        $captain_name,
+        $captain_mobile,
+        $captain_email,
+        $team_logo,
+        $emergency_contact,
+        $player_list,
+        $team_notes,
+        $accepted_terms
+    );
+
+    if ($stmt->execute()) {
+        $demoMessage = "Registration saved successfully!";
+    } else {
+        $demoMessage = "Error: " . $stmt->error;
+    }
+
+    $stmt->close();
+    $conn->close();
 }
 ?>
 <!DOCTYPE html>
