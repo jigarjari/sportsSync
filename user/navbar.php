@@ -271,8 +271,8 @@
                     <span><i class="bi bi-search"></i>Explore</span>
                 </a>
 
-                <a href="tournament_participation.php" class="nav-menu-link" target="mainFrame" title="Tournament Participation">
-                    <span><i class="bi bi-trophy-fill"></i>Tournament Participation</span>
+                <a href="tournaments_list.php" class="nav-menu-link" target="mainFrame" title="Tournament Participation">
+                    <span><i class="bi bi-trophy-fill"></i>Tournaments</span>
                 </a>
 
                 <a href="user_settings.php" class="nav-menu-link" title="User Settings">
