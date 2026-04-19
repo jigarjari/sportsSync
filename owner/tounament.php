@@ -266,7 +266,6 @@ body {
   inset: auto -60px -80px auto;
   width: 220px;
   height: 220px;
-  background: radial-gradient(circle, rgba(149, 38, 243, 0.34), transparent 70%);
   pointer-events: none;
 }
 
@@ -541,7 +540,6 @@ body {
 
         <div class="section-block">
           <h2 class="section-title">Terms and Conditions</h2>
-          <label for="terms_conditions" class="form-label">Terms and Conditions</label>
           <textarea class="form-control" id="terms_conditions" name="terms_conditions" rows="5" placeholder="Enter tournament terms and conditions"><?php echo htmlspecialchars($formData['terms_conditions']); ?></textarea>
         </div>
 

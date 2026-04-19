@@ -268,7 +268,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Tournament Registration
       </div>
       <h1>Join the tournament your way</h1>
-      <p>Choose whether you are registering as a team or as an individual player, then fill the fields shown for that mode. This page is form-only for now and is not connected to the database yet.</p>
     </section>
 
     <section class="form-card">
@@ -300,17 +299,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       <div class="col-md-6">
         <label for="mobile_number" class="form-label">Mobile Number</label>
-        <input type="tel" class="form-control" id="mobile_number" name="mobile_number">
+        <input type="tel" class="form-control" id="mobile_number" name="mobile_number" placeholder="Enter your mobile number">
       </div>
 
       <div class="col-md-6">
         <label for="email" class="form-label">Email</label>
-        <input type="email" class="form-control" id="email" name="email">
+        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email">
       </div>
 
       <div class="col-md-4">
         <label for="age" class="form-label">Age</label>
-        <input type="number" min="1" class="form-control" id="age" name="age">
+        <input type="number" min="1" class="form-control" id="age" name="age" placeholder="Enter your age">
       </div>
 
       <div class="col-md-4">
@@ -327,27 +326,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       <div class="col-md-6">
         <label for="team_name" class="form-label">Team Name</label>
-        <input type="text" class="form-control" id="team_name" name="team_name">
+        <input type="text" class="form-control" id="team_name" name="team_name" placeholder="Enter your team name">
       </div>
 
       <div class="col-md-6">
         <label for="captain_name" class="form-label">Captain Name</label>
-        <input type="text" class="form-control" id="captain_name" name="captain_name">
+        <input type="text" class="form-control" id="captain_name" name="captain_name" placeholder="Enter your captain name">
       </div>
 
       <div class="col-md-6">
         <label for="captain_mobile" class="form-label">Captain Mobile</label>
-        <input type="tel" class="form-control" id="captain_mobile" name="captain_mobile">
+        <input type="tel" class="form-control" id="captain_mobile" name="captain_mobile" placeholder="Enter your captain mobile">
       </div>
 
       <div class="col-md-6">
         <label for="captain_email" class="form-label">Captain Email</label>
-        <input type="email" class="form-control" id="captain_email" name="captain_email">
-      </div>
-
-      <div class="col-md-4">
-        <label for="players_count" class="form-label">Players Count</label>
-        <input type="number" min="1" class="form-control" id="players_count" name="players_count">
+        <input type="email" class="form-control" id="captain_email" name="captain_email" placeholder="Enter your captain email">
       </div>
 
       <div class="col-md-4">
@@ -357,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       <div class="col-md-4">
         <label for="team_emergency_contact" class="form-label">Emergency Contact</label>
-        <input type="tel" class="form-control" id="team_emergency_contact" name="team_emergency_contact">
+        <input type="tel" class="form-control" id="team_emergency_contact" name="team_emergency_contact" placeholder="Enter your Emergency number">
       </div>
 
       <div class="col-12">
@@ -367,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       <div class="col-12">
         <label for="team_notes" class="form-label">Team Notes</label>
-        <textarea class="form-control" id="team_notes" name="team_notes"></textarea>
+        <textarea class="form-control" id="team_notes" name="team_notes" placeholder="Enter your team notes"></textarea>
       </div>
 
     </div>
