@@ -3,11 +3,14 @@ session_start();
 include("../db.php");
 
 $owner_id = $_SESSION['user_id'] ?? 0;
+
 $turfs = [];
 $sports = [];
 $courts = [];
+
 $successMessage = "";
 $errorMessage = "";
+$errors = [];
 
 $formData = [
   'turf_id' => '',
@@ -19,184 +22,177 @@ $formData = [
   'tournament_time' => '',
   'terms_conditions' => ''
 ];
+
 $selectedCourts = [];
 
-if ($owner_id > 0) {
-  $turfQuery = mysqli_prepare(
-    $conn,
-    "SELECT turf_id, turf_name, location FROM turftb WHERE owner_id = ? ORDER BY turf_name"
-  );
-
-  if ($turfQuery) {
-    mysqli_stmt_bind_param($turfQuery, "i", $owner_id);
-    mysqli_stmt_execute($turfQuery);
-    $turfResult = mysqli_stmt_get_result($turfQuery);
-
-    while ($row = mysqli_fetch_assoc($turfResult)) {
-      $turfs[] = $row;
-    }
-  }
-}
-
-$sportRes = mysqli_query($conn, "SELECT sport_id, sport_name FROM sportstb ORDER BY sport_name");
-if ($sportRes) {
-  while ($row = mysqli_fetch_assoc($sportRes)) {
-    $sports[] = $row;
-  }
-}
+/* FETCH DATA */
 
 if ($owner_id > 0) {
-  $courtQuery = mysqli_prepare(
-    $conn,
+  $stmt = mysqli_prepare($conn, "SELECT turf_id, turf_name, location FROM turftb WHERE owner_id = ?");
+  mysqli_stmt_bind_param($stmt, "i", $owner_id);
+  mysqli_stmt_execute($stmt);
+  $res = mysqli_stmt_get_result($stmt);
+  while ($row = mysqli_fetch_assoc($res)) $turfs[] = $row;
+}
+
+$res = mysqli_query($conn, "SELECT sport_id, sport_name FROM sportstb");
+while ($row = mysqli_fetch_assoc($res)) $sports[] = $row;
+
+if ($owner_id > 0) {
+  $stmt = mysqli_prepare($conn,
     "SELECT tc.court_id, tc.turf_id, tc.sport_id, tc.court_name, tc.status
      FROM turf_courtstb tc
-     INNER JOIN turftb t ON t.turf_id = tc.turf_id
-     WHERE t.owner_id = ?
-     ORDER BY tc.court_name"
+     JOIN turftb t ON t.turf_id = tc.turf_id
+     WHERE t.owner_id = ?"
   );
-
-  if ($courtQuery) {
-    mysqli_stmt_bind_param($courtQuery, "i", $owner_id);
-    mysqli_stmt_execute($courtQuery);
-    $courtResult = mysqli_stmt_get_result($courtQuery);
-
-    while ($row = mysqli_fetch_assoc($courtResult)) {
-      $courts[] = $row;
-    }
-  }
+  mysqli_stmt_bind_param($stmt, "i", $owner_id);
+  mysqli_stmt_execute($stmt);
+  $res = mysqli_stmt_get_result($stmt);
+  while ($row = mysqli_fetch_assoc($res)) $courts[] = $row;
 }
 
+/* FORM SUBMIT */
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $formData['turf_id'] = trim($_POST['turf_id'] ?? '');
-  $formData['sport_id'] = trim($_POST['sport_id'] ?? '');
-  $formData['tournament_name'] = trim($_POST['tournament_name'] ?? '');
-  $formData['max_participation'] = trim($_POST['max_participation'] ?? '');
-  $formData['start_date'] = trim($_POST['start_date'] ?? '');
-  $formData['end_date'] = trim($_POST['end_date'] ?? '');
-  $formData['tournament_time'] = trim($_POST['tournament_time'] ?? '');
-  $formData['terms_conditions'] = trim($_POST['terms_conditions'] ?? '');
-  $selectedCourts = isset($_POST['court_ids']) && is_array($_POST['court_ids']) ? array_map('intval', $_POST['court_ids']) : [];
 
-  try {
-    if (
-      $formData['turf_id'] === '' ||
-      $formData['sport_id'] === '' ||
-      $formData['tournament_name'] === '' ||
-      $formData['max_participation'] === '' ||
-      $formData['start_date'] === '' ||
-      $formData['end_date'] === '' ||
-      $formData['tournament_time'] === ''
-    ) {
-      throw new Exception("Please fill all tournament fields.");
+  // clean input
+  foreach ($formData as $key => $val) {
+    $formData[$key] = trim($_POST[$key] ?? '');
+  }
+
+  $selectedCourts = isset($_POST['court_ids']) ? array_map('intval', $_POST['court_ids']) : [];
+
+  /* VALIDATION */
+
+  // required
+  foreach ($formData as $key => $val) {
+    if ($val === '') {
+      $errors[$key] = "This field is required";
+    }
+  }
+
+  // name
+  if (!isset($errors['tournament_name']) &&
+      !preg_match("/^[a-zA-Z0-9 ]{3,100}$/", $formData['tournament_name'])) {
+    $errors['tournament_name'] = "Only letters & numbers (3–100 chars)";
+  }
+
+  // participation
+  if (!isset($errors['max_participation'])) {
+    $max = (int)$formData['max_participation'];
+    if ($max < 2 || $max > 1000) {
+      $errors['max_participation'] = "Must be between 2–1000";
+    }
+  }
+
+  // dates
+  if (!isset($errors['start_date']) && !isset($errors['end_date'])) {
+    $start = strtotime($formData['start_date']);
+    $end = strtotime($formData['end_date']);
+    $today = strtotime(date("Y-m-d"));
+
+    if ($start < $today) {
+      $errors['start_date'] = "Cannot be past date";
     }
 
-    if (empty($selectedCourts)) {
-      throw new Exception("Please select at least one court.");
+    if ($end < $start) {
+      $errors['end_date'] = "End must be after start";
     }
+  }
 
-    $turfId = (int) $formData['turf_id'];
-    $sportId = (int) $formData['sport_id'];
-    $maxParticipation = (int) $formData['max_participation'];
+  // time
+  if (!isset($errors['tournament_time']) &&
+      !preg_match("/^(?:[01]\d|2[0-3]):[0-5]\d$/", $formData['tournament_time'])) {
+    $errors['tournament_time'] = "Invalid time";
+  }
 
-    if ($maxParticipation < 1) {
-      throw new Exception("Maximum participation must be at least 1.");
-    }
+  // terms
+  if (strlen($formData['terms_conditions']) > 1000) {
+    $errors['terms_conditions'] = "Max 1000 characters";
+  }
 
-    if ($formData['end_date'] < $formData['start_date']) {
-      throw new Exception("End date cannot be before start date.");
-    }
+  // courts
+  if (empty($selectedCourts)) {
+    $errors['courts'] = "Select at least one court";
+  }
 
-    $turfCheck = mysqli_prepare(
-      $conn,
-      "SELECT turf_id FROM turftb WHERE turf_id = ? AND owner_id = ? LIMIT 1"
-    );
-    mysqli_stmt_bind_param($turfCheck, "ii", $turfId, $owner_id);
-    mysqli_stmt_execute($turfCheck);
-    $turfCheckResult = mysqli_stmt_get_result($turfCheck);
+  /* INSERT ONLY IF NO ERRORS */
 
-    if (!$turfCheckResult || mysqli_num_rows($turfCheckResult) === 0) {
-      throw new Exception("Selected turf is invalid.");
-    }
+  if (empty($errors)) {
 
-    $validCourtIds = [];
-    foreach ($courts as $court) {
-      if (
-        (int) $court['turf_id'] === $turfId &&
-        (int) $court['sport_id'] === $sportId &&
-        $court['status'] === 'A'
-      ) {
-        $validCourtIds[] = (int) $court['court_id'];
+    $turfId = (int)$formData['turf_id'];
+    $sportId = (int)$formData['sport_id'];
+
+    // validate turf ownership
+    $check = mysqli_prepare($conn, "SELECT turf_id FROM turftb WHERE turf_id=? AND owner_id=?");
+    mysqli_stmt_bind_param($check, "ii", $turfId, $owner_id);
+    mysqli_stmt_execute($check);
+    $res = mysqli_stmt_get_result($check);
+
+    if (mysqli_num_rows($res) === 0) {
+      $errorMessage = "Invalid turf selected";
+    } else {
+
+      // valid courts
+      $validCourtIds = array_column(
+        array_filter($courts, fn($c) =>
+          $c['turf_id'] == $turfId &&
+          $c['sport_id'] == $sportId &&
+          $c['status'] == 'A'
+        ),
+        'court_id'
+      );
+
+      foreach ($selectedCourts as $cid) {
+        if (!in_array($cid, $validCourtIds)) {
+          $errorMessage = "Invalid court selected";
+          break;
+        }
+      }
+
+      if ($errorMessage === "") {
+
+        mysqli_begin_transaction($conn);
+
+        $stmt = mysqli_prepare($conn,
+          "INSERT INTO tournamenttb 
+          (tournament_name, turf_id, sport_id, max_participation, start_date, end_date, tournament_time, terms_conditions)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+
+        mysqli_stmt_bind_param(
+          $stmt,
+          "siiissss",
+          $formData['tournament_name'],
+          $turfId,
+          $sportId,
+          $formData['max_participation'],
+          $formData['start_date'],
+          $formData['end_date'],
+          $formData['tournament_time'],
+          $formData['terms_conditions']
+        );
+
+        mysqli_stmt_execute($stmt);
+        $tournamentId = mysqli_insert_id($conn);
+
+        $courtStmt = mysqli_prepare($conn,
+          "INSERT INTO tournament_courtstb (tournament_id, court_id) VALUES (?, ?)"
+        );
+
+        foreach ($selectedCourts as $cid) {
+          mysqli_stmt_bind_param($courtStmt, "ii", $tournamentId, $cid);
+          mysqli_stmt_execute($courtStmt);
+        }
+
+        mysqli_commit($conn);
+        $successMessage = "Tournament created successfully!";
+
+        // reset
+        foreach ($formData as $k => $v) $formData[$k] = '';
+        $selectedCourts = [];
       }
     }
-
-    foreach ($selectedCourts as $courtId) {
-      if (!in_array($courtId, $validCourtIds, true)) {
-        throw new Exception("One or more selected courts are invalid.");
-      }
-    }
-
-    mysqli_begin_transaction($conn);
-
-    $insertTournament = mysqli_prepare(
-      $conn,
-      "INSERT INTO tournamenttb (tournament_name, turf_id, sport_id, max_participation, start_date, end_date, tournament_time, terms_conditions)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    );
-
-    if (!$insertTournament) {
-      throw new Exception("Unable to prepare tournament insert.");
-    }
-
-    mysqli_stmt_bind_param(
-      $insertTournament,
-      "siiissss",
-      $formData['tournament_name'],
-      $turfId,
-      $sportId,
-      $maxParticipation,
-      $formData['start_date'],
-      $formData['end_date'],
-      $formData['tournament_time'],
-      $formData['terms_conditions']
-    );
-    mysqli_stmt_execute($insertTournament);
-
-    $tournamentId = mysqli_insert_id($conn);
-
-    if ($tournamentId <= 0) {
-      throw new Exception("Tournament could not be created.");
-    }
-
-    $insertCourt = mysqli_prepare(
-      $conn,
-      "INSERT INTO tournament_courtstb (tournament_id, court_id) VALUES (?, ?)"
-    );
-
-    if (!$insertCourt) {
-      throw new Exception("Unable to prepare tournament court insert.");
-    }
-
-    foreach ($selectedCourts as $courtId) {
-      mysqli_stmt_bind_param($insertCourt, "ii", $tournamentId, $courtId);
-      mysqli_stmt_execute($insertCourt);
-    }
-
-    mysqli_commit($conn);
-    $successMessage = "Tournament saved successfully.";
-    $formData = [
-      'turf_id' => '',
-      'sport_id' => '',
-      'tournament_name' => '',
-      'max_participation' => '',
-      'start_date' => '',
-      'end_date' => '',
-      'tournament_time' => '',
-      'terms_conditions' => ''
-    ];
-    $selectedCourts = [];
-  } catch (Exception $e) {
-    mysqli_rollback($conn);
-    $errorMessage = $e->getMessage();
   }
 }
 ?>
@@ -481,72 +477,130 @@ body {
         </div>
       <?php endif; ?>
 
-      <form method="post">
-        <div class="section-block">
-          <h2 class="section-title">Tournament Details</h2>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label for="turf_id" class="form-label">Select Turf</label>
-              <select class="form-select" id="turf_id" name="turf_id" required>
-                <option value="">Choose turf</option>
-                <?php foreach ($turfs as $turf): ?>
-                  <option value="<?php echo (int) $turf['turf_id']; ?>" <?php echo $formData['turf_id'] === (string) $turf['turf_id'] ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($turf['turf_name'] . ' - ' . $turf['location']); ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label for="sport_id" class="form-label">Sport</label>
-              <select class="form-select" id="sport_id" name="sport_id" required>
-                <option value="">Choose sport</option>
-                <?php foreach ($sports as $sport): ?>
-                  <option value="<?php echo (int) $sport['sport_id']; ?>" <?php echo $formData['sport_id'] === (string) $sport['sport_id'] ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($sport['sport_name']); ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label for="tournament_name" class="form-label">Tournament Name</label>
-              <input type="text" class="form-control" id="tournament_name" name="tournament_name" placeholder="Enter tournament name" value="<?php echo htmlspecialchars($formData['tournament_name']); ?>" required>
-            </div>
-            <div class="col-md-6">
-              <label for="max_participation" class="form-label">Maximum Participation</label>
-              <input type="number" min="1" class="form-control" id="max_participation" name="max_participation" placeholder="Enter maximum participants" value="<?php echo htmlspecialchars($formData['max_participation']); ?>" required>
-            </div>
-            <div class="col-md-4">
-              <label for="start_date" class="form-label">Start Date</label>
-              <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo htmlspecialchars($formData['start_date']); ?>" required>
-            </div>
-            <div class="col-md-4">
-              <label for="end_date" class="form-label">End Date</label>
-              <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo htmlspecialchars($formData['end_date']); ?>" required>
-            </div>
-            <div class="col-md-4">
-              <label for="tournament_time" class="form-label">Time</label>
-              <input type="time" class="form-control" id="tournament_time" name="tournament_time" value="<?php echo htmlspecialchars($formData['tournament_time']); ?>" required>
-            </div>
-          </div>
-        </div>
+      <form method="post" novalidate>
 
-        <div class="section-block">
-          <h2 class="section-title">Court Selection</h2>
-          <div class="court-panel">
-            <div id="courtContainer" class="court-grid"></div>
-            <p id="courtEmptyState" class="court-empty mb-0">Select turf and sport to view available courts.</p>
-          </div>
-        </div>
+<div class="section-block">
+<h2 class="section-title">Tournament Details</h2>
+<div class="row g-3">
 
-        <div class="section-block">
-          <h2 class="section-title">Terms and Conditions</h2>
-          <textarea class="form-control" id="terms_conditions" name="terms_conditions" rows="5" placeholder="Enter tournament terms and conditions"><?php echo htmlspecialchars($formData['terms_conditions']); ?></textarea>
-        </div>
+<!-- Turf -->
+<div class="col-md-6">
+<label class="form-label">Select Turf <span class="text-danger">*</span></label>
+<select name="turf_id"
+class="form-select <?php echo isset($errors['turf_id']) ? 'is-invalid' : ''; ?>">
+<option value="">Choose turf</option>
+<?php foreach ($turfs as $turf): ?>
+<option value="<?php echo $turf['turf_id']; ?>"
+<?php if($formData['turf_id']==$turf['turf_id']) echo 'selected'; ?>>
+<?php echo htmlspecialchars($turf['turf_name'].' - '.$turf['location']); ?>
+</option>
+<?php endforeach; ?>
+</select>
+<div class="invalid-feedback"><?php echo $errors['turf_id'] ?? ''; ?></div>
+</div>
 
-        <div class="section-block">
-          <button type="submit" class="btn btn-primary w-100" <?php echo empty($turfs) ? 'disabled' : ''; ?>>Save Tournament Details</button>
-        </div>
-      </form>
+<!-- Sport -->
+<div class="col-md-6">
+<label class="form-label">Sport <span class="text-danger">*</span></label>
+<select name="sport_id"
+class="form-select <?php echo isset($errors['sport_id']) ? 'is-invalid' : ''; ?>">
+<option value="">Choose sport</option>
+<?php foreach ($sports as $sport): ?>
+<option value="<?php echo $sport['sport_id']; ?>"
+<?php if($formData['sport_id']==$sport['sport_id']) echo 'selected'; ?>>
+<?php echo htmlspecialchars($sport['sport_name']); ?>
+</option>
+<?php endforeach; ?>
+</select>
+<div class="invalid-feedback"><?php echo $errors['sport_id'] ?? ''; ?></div>
+</div>
+
+<!-- Name -->
+<div class="col-md-6">
+<label class="form-label">Tournament Name <span class="text-danger">*</span></label>
+<input type="text" name="tournament_name"
+value="<?php echo htmlspecialchars($formData['tournament_name']); ?>"
+class="form-control <?php echo isset($errors['tournament_name']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['tournament_name'] ?? ''; ?></div>
+</div>
+
+<!-- Participation -->
+<div class="col-md-6">
+<label class="form-label">Maximum Participation <span class="text-danger">*</span></label>
+<input type="number" name="max_participation" min="2"
+value="<?php echo htmlspecialchars($formData['max_participation']); ?>"
+class="form-control <?php echo isset($errors['max_participation']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['max_participation'] ?? ''; ?></div>
+</div>
+
+<!-- Start -->
+<div class="col-md-4">
+<label class="form-label">Start Date <span class="text-danger">*</span></label>
+<input type="date" name="start_date"
+value="<?php echo htmlspecialchars($formData['start_date']); ?>"
+min="<?php echo date('Y-m-d'); ?>"
+class="form-control <?php echo isset($errors['start_date']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['start_date'] ?? ''; ?></div>
+</div>
+
+<!-- End -->
+<div class="col-md-4">
+<label class="form-label">End Date <span class="text-danger">*</span></label>
+<input type="date" name="end_date"
+value="<?php echo htmlspecialchars($formData['end_date']); ?>"
+min="<?php echo date('Y-m-d'); ?>"
+class="form-control <?php echo isset($errors['end_date']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['end_date'] ?? ''; ?></div>
+</div>
+
+<!-- Time -->
+<div class="col-md-4">
+<label class="form-label">Time <span class="text-danger">*</span></label>
+<input type="time" name="tournament_time"
+value="<?php echo htmlspecialchars($formData['tournament_time']); ?>"
+class="form-control <?php echo isset($errors['tournament_time']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['tournament_time'] ?? ''; ?></div>
+</div>
+
+</div>
+</div>
+
+<!-- Courts -->
+<div class="section-block">
+<h2 class="section-title">Court Selection <span class="text-danger">*</span></h2>
+
+<div class="court-panel
+<?php echo isset($errors['courts']) ? 'border border-danger' : ''; ?>">
+
+<div id="courtContainer" class="court-grid"></div>
+
+<p id="courtEmptyState" class="court-empty mb-0">
+Select turf and sport to view available courts.
+</p>
+
+<?php if(isset($errors['courts'])): ?>
+<div class="text-danger mt-2"><?php echo $errors['courts']; ?></div>
+<?php endif; ?>
+
+</div>
+</div>
+
+<!-- Terms -->
+<div class="section-block">
+<h2 class="section-title">Terms and Conditions</h2>
+<textarea name="terms_conditions"
+class="form-control"><?php echo htmlspecialchars($formData['terms_conditions']); ?></textarea>
+</div>
+
+<!-- Submit -->
+<div class="section-block">
+<button type="submit" class="btn btn-primary w-100"
+<?php echo empty($turfs) ? 'disabled' : ''; ?>>
+Save Tournament Details
+</button>
+</div>
+
+</form>
     </section>
   </div>
 
@@ -616,6 +670,12 @@ body {
     }
 
     renderCourts();
+
+    document.querySelectorAll("input[type='number']").forEach(input => {
+  input.addEventListener("input", function () {
+    this.value = this.value.replace(/[^0-9]/g, '');
+  });
+});
   </script>
 </body>
 </html>

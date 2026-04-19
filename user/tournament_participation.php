@@ -2,6 +2,7 @@
 session_start();
 
 $demoMessage = "";
+$errors = [];
 
 // DB CONNECTION
 $host = "localhost";
@@ -18,89 +19,123 @@ if ($conn->connect_error) {
 // FORM SUBMIT
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // Basic fields
-    $tournament_name = $_POST['tournament_name'];
-    $full_name = $_POST['full_name'];
-    $mobile_number = $_POST['mobile_number'];
-    $email = $_POST['email'];
-    $age = $_POST['age'];
+    function clean($data) {
+        return htmlspecialchars(trim($data));
+    }
 
-    $team_name = $_POST['team_name'];
-    $captain_name = $_POST['captain_name'];
-    $captain_mobile = $_POST['captain_mobile'];
-    $captain_email = $_POST['captain_email'];
+    $tournament_name = clean($_POST['tournament_name']);
+    $full_name = clean($_POST['full_name']);
+    $mobile_number = clean($_POST['mobile_number']);
+    $email = clean($_POST['email']);
+    $age = clean($_POST['age']);
 
-    $emergency_contact = $_POST['team_emergency_contact'];
-    $player_list = $_POST['player_list'];
-    $team_notes = $_POST['team_notes'];
+    $team_name = clean($_POST['team_name']);
+    $captain_name = clean($_POST['captain_name']);
+    $captain_mobile = clean($_POST['captain_mobile']);
+    $captain_email = clean($_POST['captain_email']);
+
+    $emergency_contact = clean($_POST['team_emergency_contact']);
+    $player_list = clean($_POST['player_list']);
+    $team_notes = clean($_POST['team_notes']);
 
     $accepted_terms = isset($_POST['accept_terms']) ? 1 : 0;
 
-    // FILE UPLOADS
-    function uploadFile($fileInputName) {
-        if (!empty($_FILES[$fileInputName]['name'])) {
-            $targetDir = "uploads/";
-            $fileName = time() . "_" . basename($_FILES[$fileInputName]["name"]);
-            $targetFile = $targetDir . $fileName;
+    // VALIDATIONS
 
-            move_uploaded_file($_FILES[$fileInputName]["tmp_name"], $targetFile);
+    if (empty($tournament_name)) $errors['tournament_name'] = "Required";
 
+    if (empty($full_name) || !preg_match("/^[a-zA-Z ]+$/", $full_name)) {
+        $errors['full_name'] = "Only letters allowed";
+    }
+
+    if (!preg_match("/^[0-9]{10}$/", $mobile_number)) {
+        $errors['mobile_number'] = "Enter valid 10 digit number";
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors['email'] = "Invalid email";
+    }
+
+    if (!filter_var($age, FILTER_VALIDATE_INT) || $age < 10 || $age > 60) {
+        $errors['age'] = "Invalid age";
+    }
+
+    if (empty($team_name)) $errors['team_name'] = "Required";
+
+    if (!preg_match("/^[a-zA-Z ]+$/", $captain_name)) {
+        $errors['captain_name'] = "Only letters allowed";
+    }
+
+    if (!preg_match("/^[0-9]{10}$/", $captain_mobile)) {
+        $errors['captain_mobile'] = "Invalid number";
+    }
+
+    if (!filter_var($captain_email, FILTER_VALIDATE_EMAIL)) {
+        $errors['captain_email'] = "Invalid email";
+    }
+
+    if (!preg_match("/^[0-9]{10}$/", $emergency_contact)) {
+        $errors['team_emergency_contact'] = "Invalid number";
+    }
+
+    if (!$accepted_terms) {
+        $errors['accept_terms'] = "You must accept terms";
+    }
+
+    // FILE VALIDATION (IMPORTANT)
+    function uploadFile($input) {
+        if (!empty($_FILES[$input]['name'])) {
+
+            $allowed = ['image/jpeg','image/png','image/jpg'];
+            if (!in_array($_FILES[$input]['type'], $allowed)) {
+                return null;
+            }
+
+            if ($_FILES[$input]['size'] > 2 * 1024 * 1024) {
+                return null;
+            }
+
+            $fileName = time() . "_" . basename($_FILES[$input]['name']);
+            move_uploaded_file($_FILES[$input]['tmp_name'], "uploads/" . $fileName);
             return $fileName;
         }
         return null;
     }
 
-    $profile_photo = uploadFile("profile_photo");
-    $team_logo = uploadFile("team_logo");
+    // ONLY INSERT IF NO ERRORS
+    if (empty($errors)) {
 
-    // INSERT QUERY (prepared statement)
-    $stmt = $conn->prepare("
-        INSERT INTO tournament_registrations (
-            tournament_name,
-            full_name,
-            mobile_number,
-            email,
-            age,
-            profile_photo,
-            team_name,
-            captain_name,
-            captain_mobile,
-            captain_email,
-            team_logo,
-            emergency_contact,
-            player_list,
-            team_notes,
-            accepted_terms
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
+        $profile_photo = uploadFile("profile_photo");
+        $team_logo = uploadFile("team_logo");
 
-    $stmt->bind_param(
-        "ssssisssssssssi",
-        $tournament_name,
-        $full_name,
-        $mobile_number,
-        $email,
-        $age,
-        $profile_photo,
-        $team_name,
-        $captain_name,
-        $captain_mobile,
-        $captain_email,
-        $team_logo,
-        $emergency_contact,
-        $player_list,
-        $team_notes,
-        $accepted_terms
-    );
+        $stmt = $conn->prepare("INSERT INTO tournament_registrations 
+        (tournament_name, full_name, mobile_number, email, age, profile_photo,
+        team_name, captain_name, captain_mobile, captain_email, team_logo,
+        emergency_contact, player_list, team_notes, accepted_terms)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-    if ($stmt->execute()) {
-        $demoMessage = "Registration saved successfully!";
-    } else {
-        $demoMessage = "Error: " . $stmt->error;
+        $stmt->bind_param("ssssisssssssssi",
+            $tournament_name,
+            $full_name,
+            $mobile_number,
+            $email,
+            $age,
+            $profile_photo,
+            $team_name,
+            $captain_name,
+            $captain_mobile,
+            $captain_email,
+            $team_logo,
+            $emergency_contact,
+            $player_list,
+            $team_notes,
+            $accepted_terms
+        );
+
+        if ($stmt->execute()) {
+            $demoMessage = "Registration successful!";
+        }
     }
-
-    $stmt->close();
-    $conn->close();
 }
 ?>
 <!DOCTYPE html>
@@ -374,108 +409,160 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       <?php endif; ?>
 
-     <form method="post" enctype="multipart/form-data">
-  <div class="section-block">
-    <h2 class="section-title">Tournament & Basic Details</h2>
-    <div class="row g-3">
+    <form method="post" enctype="multipart/form-data" novalidate>
 
-      <div class="col-md-6">
-        <label for="tournament_name" class="form-label">Tournament Name</label>
-        <select class="form-select" id="tournament_name" name="tournament_name">
-          <option value="">Select Tournament</option>
-          <option value="summer_cup">Summer Cup</option>
-          <option value="champions_league">Champions League</option>
-          <option value="night_league">Night League</option>
-        </select>
-      </div>
+<div class="section-block">
+<h2 class="section-title">Tournament & Basic Details</h2>
+<div class="row g-3">
 
-      <div class="col-md-6">
-        <label for="full_name" class="form-label">Your Name</label>
-        <input type="text" class="form-control" id="full_name" name="full_name" placeholder="Enter your name">
-      </div>
+<!-- Tournament -->
+<div class="col-md-6">
+<label class="form-label">Tournament Name <span class="text-danger">*</span></label>
+<select name="tournament_name"
+class="form-select <?php echo isset($errors['tournament_name']) ? 'is-invalid' : ''; ?>">
+<option value="">Select Tournament</option>
+<option value="summer_cup" <?php if(($tournament_name ?? '')=='summer_cup') echo 'selected'; ?>>Summer Cup</option>
+<option value="champions_league" <?php if(($tournament_name ?? '')=='champions_league') echo 'selected'; ?>>Champions League</option>
+<option value="night_league" <?php if(($tournament_name ?? '')=='night_league') echo 'selected'; ?>>Night League</option>
+</select>
+<div class="invalid-feedback"><?php echo $errors['tournament_name'] ?? ''; ?></div>
+</div>
 
-      <div class="col-md-6">
-        <label for="mobile_number" class="form-label">Mobile Number</label>
-        <input type="tel" class="form-control" id="mobile_number" name="mobile_number" placeholder="Enter your mobile number">
-      </div>
+<!-- Name -->
+<div class="col-md-6">
+<label class="form-label">Your Name <span class="text-danger">*</span></label>
+<input type="text" name="full_name"
+value="<?php echo htmlspecialchars($full_name ?? ''); ?>"
+class="form-control <?php echo isset($errors['full_name']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['full_name'] ?? ''; ?></div>
+</div>
 
-      <div class="col-md-6">
-        <label for="email" class="form-label">Email</label>
-        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email">
-      </div>
+<!-- Mobile -->
+<div class="col-md-6">
+<label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+<input type="tel" name="mobile_number" maxlength="10"
+value="<?php echo htmlspecialchars($mobile_number ?? ''); ?>"
+class="form-control <?php echo isset($errors['mobile_number']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['mobile_number'] ?? ''; ?></div>
+</div>
 
-      <div class="col-md-4">
-        <label for="age" class="form-label">Age</label>
-        <input type="number" min="1" class="form-control" id="age" name="age" placeholder="Enter your age">
-      </div>
+<!-- Email -->
+<div class="col-md-6">
+<label class="form-label">Email <span class="text-danger">*</span></label>
+<input type="email" name="email"
+value="<?php echo htmlspecialchars($email ?? ''); ?>"
+class="form-control <?php echo isset($errors['email']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['email'] ?? ''; ?></div>
+</div>
 
-      <div class="col-md-4">
-        <label for="profile_photo" class="form-label">Profile Photo</label>
-        <input type="file" class="form-control" id="profile_photo" name="profile_photo" accept="image/*">
-      </div>
+<!-- Age -->
+<div class="col-md-4">
+<label class="form-label">Age <span class="text-danger">*</span></label>
+<input type="number" name="age" min="10" max="60"
+value="<?php echo htmlspecialchars($age ?? ''); ?>"
+class="form-control <?php echo isset($errors['age']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['age'] ?? ''; ?></div>
+</div>
 
-    </div>
-  </div>
+<!-- Profile -->
+<div class="col-md-4">
+<label class="form-label">Profile Photo</label>
+<input type="file" name="profile_photo" class="form-control">
+</div>
 
-  <div class="section-block">
-    <h2 class="section-title">Team Details</h2>
-    <div class="row g-3">
+</div>
+</div>
 
-      <div class="col-md-6">
-        <label for="team_name" class="form-label">Team Name</label>
-        <input type="text" class="form-control" id="team_name" name="team_name" placeholder="Enter your team name">
-      </div>
 
-      <div class="col-md-6">
-        <label for="captain_name" class="form-label">Captain Name</label>
-        <input type="text" class="form-control" id="captain_name" name="captain_name" placeholder="Enter your captain name">
-      </div>
+<div class="section-block">
+<h2 class="section-title">Team Details</h2>
+<div class="row g-3">
 
-      <div class="col-md-6">
-        <label for="captain_mobile" class="form-label">Captain Mobile</label>
-        <input type="tel" class="form-control" id="captain_mobile" name="captain_mobile" placeholder="Enter your captain mobile">
-      </div>
+<!-- Team -->
+<div class="col-md-6">
+<label class="form-label">Team Name <span class="text-danger">*</span></label>
+<input type="text" name="team_name"
+value="<?php echo htmlspecialchars($team_name ?? ''); ?>"
+class="form-control <?php echo isset($errors['team_name']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['team_name'] ?? ''; ?></div>
+</div>
 
-      <div class="col-md-6">
-        <label for="captain_email" class="form-label">Captain Email</label>
-        <input type="email" class="form-control" id="captain_email" name="captain_email" placeholder="Enter your captain email">
-      </div>
+<!-- Captain -->
+<div class="col-md-6">
+<label class="form-label">Captain Name <span class="text-danger">*</span></label>
+<input type="text" name="captain_name"
+value="<?php echo htmlspecialchars($captain_name ?? ''); ?>"
+class="form-control <?php echo isset($errors['captain_name']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['captain_name'] ?? ''; ?></div>
+</div>
 
-      <div class="col-md-4">
-        <label for="team_logo" class="form-label">Team Logo</label>
-        <input type="file" class="form-control" id="team_logo" name="team_logo" accept="image/*">
-      </div>
+<!-- Captain Mobile -->
+<div class="col-md-6">
+<label class="form-label">Captain Mobile <span class="text-danger">*</span></label>
+<input type="tel" name="captain_mobile" maxlength="10"
+value="<?php echo htmlspecialchars($captain_mobile ?? ''); ?>"
+class="form-control <?php echo isset($errors['captain_mobile']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['captain_mobile'] ?? ''; ?></div>
+</div>
 
-      <div class="col-md-4">
-        <label for="team_emergency_contact" class="form-label">Emergency Contact</label>
-        <input type="tel" class="form-control" id="team_emergency_contact" name="team_emergency_contact" placeholder="Enter your Emergency number">
-      </div>
+<!-- Captain Email -->
+<div class="col-md-6">
+<label class="form-label">Captain Email <span class="text-danger">*</span></label>
+<input type="email" name="captain_email"
+value="<?php echo htmlspecialchars($captain_email ?? ''); ?>"
+class="form-control <?php echo isset($errors['captain_email']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['captain_email'] ?? ''; ?></div>
+</div>
 
-      <div class="col-12">
-        <label for="player_list" class="form-label">Player List</label>
-        <textarea class="form-control" id="player_list" name="player_list" placeholder="Enter one player per line"></textarea>
-      </div>
+<!-- Emergency -->
+<div class="col-md-4">
+<label class="form-label">Emergency Contact <span class="text-danger">*</span></label>
+<input type="tel" name="team_emergency_contact" maxlength="10"
+value="<?php echo htmlspecialchars($emergency_contact ?? ''); ?>"
+class="form-control <?php echo isset($errors['team_emergency_contact']) ? 'is-invalid' : ''; ?>">
+<div class="invalid-feedback"><?php echo $errors['team_emergency_contact'] ?? ''; ?></div>
+</div>
 
-      <div class="col-12">
-        <label for="team_notes" class="form-label">Team Notes</label>
-        <textarea class="form-control" id="team_notes" name="team_notes" placeholder="Enter your team notes"></textarea>
-      </div>
+<!-- Logo -->
+<div class="col-md-4">
+<label class="form-label">Team Logo</label>
+<input type="file" name="team_logo" class="form-control">
+</div>
 
-    </div>
-  </div>
+<!-- Player List -->
+<div class="col-12">
+<label class="form-label">Player List</label>
+<textarea name="player_list" class="form-control"><?php echo htmlspecialchars($player_list ?? ''); ?></textarea>
+</div>
 
-  <div class="section-block">
-    <h2 class="section-title">Confirmation</h2>
+<!-- Notes -->
+<div class="col-12">
+<label class="form-label">Team Notes</label>
+<textarea name="team_notes" class="form-control"><?php echo htmlspecialchars($team_notes ?? ''); ?></textarea>
+</div>
 
-    <label class="checkbox-line">
-      <input type="checkbox" name="accept_terms" value="1">
-      <span>I agree to the tournament rules.</span>
-    </label>
-  </div>
+</div>
+</div>
 
-  <div class="section-block">
-    <button type="submit" class="btn btn-primary w-100">Submit Registration</button>
-  </div>
+
+<div class="section-block">
+<h2 class="section-title">Confirmation</h2>
+
+<label class="checkbox-line">
+<input type="checkbox" name="accept_terms" value="1">
+<span>I agree to the tournament rules <span class="text-danger">*</span></span>
+</label>
+
+<?php if(isset($errors['accept_terms'])): ?>
+<div class="text-danger mt-2"><?php echo $errors['accept_terms']; ?></div>
+<?php endif; ?>
+
+</div>
+
+<div class="section-block">
+<button type="submit" class="btn btn-primary w-100">Submit Registration</button>
+</div>
+
 </form>
     </section>
   </div>
@@ -490,6 +577,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       individual: document.getElementById("individualFields")
     };
     const radios = document.querySelectorAll('input[name="registration_type"]');
+
+    document.querySelectorAll("input[type='tel'], input[type='number']").forEach(input => {
+    input.addEventListener("input", function () {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+});
 
     function updateMode(selectedMode) {
       Object.keys(modeCards).forEach(function (mode) {
