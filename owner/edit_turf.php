@@ -1,7 +1,7 @@
 
 <?php
 
-include("db.php");
+include("../db.php");
 
   if (!isset($_GET['turf_id']) || !is_numeric($_GET['turf_id'])) {
     die('Invalid turf ID'); 

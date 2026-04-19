@@ -154,24 +154,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         mysqli_begin_transaction($conn);
 
-        $stmt = mysqli_prepare($conn,
-          "INSERT INTO tournamenttb 
-          (tournament_name, turf_id, sport_id, max_participation, start_date, end_date, tournament_time, terms_conditions)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        );
+    $insertTournament = mysqli_prepare(
+      $conn,
+      "INSERT INTO tournamenttb (tournament_name, turf_id, sport_id, max_participation, start_date, end_date, tournament_time, terms_conditions,vendor_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)"
+    );
 
-        mysqli_stmt_bind_param(
-          $stmt,
-          "siiissss",
-          $formData['tournament_name'],
-          $turfId,
-          $sportId,
-          $formData['max_participation'],
-          $formData['start_date'],
-          $formData['end_date'],
-          $formData['tournament_time'],
-          $formData['terms_conditions']
-        );
+    if (!$insertTournament) {
+      throw new Exception("Unable to prepare tournament insert.");
+    }
+
+    mysqli_stmt_bind_param(
+      $insertTournament,
+      "siiissssi",
+      $formData['tournament_name'],
+      $turfId,
+      $sportId,
+      $maxParticipation,
+      $formData['start_date'],
+      $formData['end_date'],
+      $formData['tournament_time'],
+      $formData['terms_conditions'],
+      $owner_id
+    );
+    mysqli_stmt_execute($insertTournament);
 
         mysqli_stmt_execute($stmt);
         $tournamentId = mysqli_insert_id($conn);
