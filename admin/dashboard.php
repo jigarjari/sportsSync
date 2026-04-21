@@ -103,7 +103,24 @@ if (!isset($_SESSION['admin']) || $_SESSION['role'] !== 'admin') {
                         <p class="text-secondary small">View messages submitted from contact form.</p>
                         <a href="view_contacts.php" class="btn btn-orange w-100 mt-auto"><span> View Messages </span></a>
                     </div>
-                </div>             
+                </div>      
+                
+               <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card card-custom p-4 h-100">
+                    <i class="bi bi-megaphone-fill text-orange fs-1 mb-3"></i>
+                    <h5 class="text-white">Ads Plans</h5>
+                    <p class="text-secondary small">Create and manage promotion plans for vendors.</p>
+                    <a href="manage_plans.php" class="btn btn-orange w-100 mt-auto"><span> Manage Plans </span></a>
+                </div>
+            </div>  
+            <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card card-custom p-4 h-100">
+                        <i class="bi bi-trophy-fill text-orange fs-1 mb-3"></i>
+                        <h5 class="text-white">Tournament Requests</h5>
+                        <p class="text-secondary small">Review and approve tournament submissions.</p>
+                        <a href="tournament_requests.php" class="btn btn-orange w-100 mt-auto"><span>Approve Tournaments</span></a>
+                    </div>
+                </div>   
             </div>
         </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
