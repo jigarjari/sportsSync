@@ -2,10 +2,13 @@
 session_start();
 include('../db.php');
 
-// Must be logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: ../login.php");
-    exit;
+    $basePath = explode('/', $_SERVER['PHP_SELF'])[1];
+
+echo "<script>
+    alert('Please login to continue');
+    window.top.location.href = '/$basePath/signin.php';
+</script>";
 }
 
 $user_id   = $_SESSION['user_id'];
@@ -466,7 +469,7 @@ body::before {
           Tournaments you submitted — admin approval required before they go live.
         </p>
       </div>
-      <a href="tournament.php" class="btn-host">
+      <a href="../owner/tounament.php" class="btn-host">
         <i class="bi bi-plus-circle-fill"></i> Host New Tournament
       </a>
     </div>
@@ -475,7 +478,7 @@ body::before {
       <div class="empty-state">
         <i class="bi bi-flag"></i>
         <h4>You haven't hosted any tournaments yet</h4>
-        <a href="tournament.php" class="btn-host mt-3">
+        <a href="../owner/tournament.php" class="btn-host mt-3">
           <i class="bi bi-plus-circle-fill"></i> Host Your First Tournament
         </a>
       </div>

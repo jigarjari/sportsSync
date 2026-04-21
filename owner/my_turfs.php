@@ -418,12 +418,23 @@ $tournament_res = mysqli_query($conn, $tournament_sql);
                 </p>
 
                 <p class="turf-location">
-                  <i class="bi bi-people"></i>
-                  Max:
-                  <?= $t['max_participation'] ?>
-                </p>
+  <i class="bi bi-people"></i>
+  Max: <?= $t['max_participation'] ?>
+</p>
 
-              </div>
+<!-- Status badge -->
+<p class="turf-location">
+  <i class="bi bi-circle-fill" style="font-size:.6rem;color:<?= $t['status']==='A'?'#4ade80':($t['status']==='R'?'#f87171':'#fbbf24'); ?>"></i>
+  <?= $t['status']==='A'?'Approved':($t['status']==='R'?'Rejected':'Pending Approval'); ?>
+</p>
+
+<div class="actions mt-2">
+  <a href="tournament_manage.php?id=<?= $t['tournament_id'] ?>" class="btn btn-success">
+    <i class="bi bi-people-fill"></i> Manage Teams
+  </a>
+</div>
+
+</div>
 
             </div>
           </div>
