@@ -73,9 +73,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $successMessage = "Payment successful! Your tournament is now live.";
 
         } catch (Exception $e) {
-            mysqli_rollback($conn);
-            $error = "Something went wrong: " . $e->getMessage();
-        }
+    mysqli_rollback($conn);
+    $errMsg = $e->getMessage();
+    if (str_starts_with($errMsg, 'SLOT_CONFLICT::')) {
+        $parts = explode('::', $errMsg);
+        $error = "Cannot activate — the turf is already booked on <strong>{$parts[1]}</strong> 
+                  during <strong>{$parts[2]}</strong>. 
+                  Please contact the turf owner or choose different dates and refill the tournament form";
+    } else {
+        $error = "Something went wrong: " . $errMsg;
+    }
+}
     }
 }
 ?>
@@ -195,7 +203,14 @@ body{margin:0;min-height:100vh;background:#0e0f11;
         Once paid, your tournament will go <strong>live immediately</strong> and 
         the slots will be blocked from regular bookings.
       </div>
-
+      <?php if (!empty($error)): ?>
+<div style="padding:14px 16px;border-radius:14px;margin-bottom:16px;
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
+  color:#f87171;font-size:.88rem;line-height:1.6">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  <?php echo $error; ?>
+</div>
+<?php endif; ?>
       <form method="post" id="payForm">
         <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id" value="">
         <button type="button" class="btn-pay" id="payBtn" onclick="startPayment()">

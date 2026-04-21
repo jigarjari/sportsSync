@@ -37,9 +37,33 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             mysqli_stmt_execute($nStmt);
 
         } elseif ($tRow['is_external_turf'] == 0 && $tRow['turf_id']) {
-            // SCENARIO 1: Vendor + Internal → auto-block slots, no payment
-            blockTournamentSlots($conn, $tRow, $tRow['host_id'], 'AUTO', 0);
+    // SCENARIO 1: Vendor + Internal → auto-block slots
+    try {
+        blockTournamentSlots($conn, $tRow, $tRow['host_id'], 'AUTO', 0);
+        mysqli_query($conn,
+            "UPDATE tournamenttb SET status = 'A' WHERE tournament_id = $id");
+    } catch (Exception $e) {
+        $errMsg = $e->getMessage();
+        if (str_starts_with($errMsg, 'SLOT_CONFLICT::')) {
+            $parts = explode('::', $errMsg);
+            // Reject instead and notify vendor
+            mysqli_query($conn,
+                "UPDATE tournamenttb SET status = 'R' WHERE tournament_id = $id");
+            $msg = "Your tournament '{$tRow['tournament_name']}' could not be approved — 
+                    the turf is already booked on {$parts[1]} during {$parts[2]}.";
+            $nStmt = mysqli_prepare($conn,
+                "INSERT INTO notifications 
+                    (user_id, type, title, message, reference_id, reference_type)
+                 VALUES (?, 'tournament_conflict', 'Tournament Slot Conflict', ?, ?, 'tournament')");
+            mysqli_stmt_bind_param($nStmt, "isi", $tRow['host_id'], $msg, $id);
+            mysqli_stmt_execute($nStmt);
+            // Redirect with error message
+            header("Location: tournament_requests.php?conflict=1&name=" . 
+                urlencode($tRow['tournament_name']));
+            exit;
         }
+    }
+}
         // SCENARIO 2 & 4: External turf → just approve, nothing to block
 
         mysqli_query($conn, "UPDATE tournamenttb SET status = '$newStatus' WHERE tournament_id = $id");
@@ -59,7 +83,15 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 $sql = "SELECT t.*, s.sport_name FROM tournamenttb t JOIN sportstb s ON t.sport_id = s.sport_id ORDER BY t.created_at DESC";
 $result = mysqli_query($conn, $sql);
 ?>
-
+<?php if (isset($_GET['conflict'])): ?>
+<div class="alert" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+  color:#f87171;border-radius:12px;padding:14px 18px;margin-bottom:20px">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  Tournament "<strong><?php echo htmlspecialchars($_GET['name'] ?? ''); ?></strong>" 
+  was auto-rejected — the turf already has bookings during the requested time slot. 
+  The host has been notified.
+</div>
+<?php endif; ?>
 <!DOCTYPE html>
 <html>
 

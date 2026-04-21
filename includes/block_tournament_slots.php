@@ -38,7 +38,7 @@ function blockTournamentSlots($conn, $t, $user_id, $payment_id, $paid_amount) {
     while ($s = mysqli_fetch_assoc($slotsRes)) $slotIds[] = (int)$s['price_slot_id'];
 
     if (empty($slotIds)) return 0;
-
+    
     // Count days
     $start = new DateTime($t['start_date']);
     $end   = new DateTime($t['end_date']);
@@ -62,7 +62,35 @@ function blockTournamentSlots($conn, $t, $user_id, $payment_id, $paid_amount) {
     $token = 'TOURN_' . $tid . '_' . time();
     $status = ($payment_id === 'AUTO') ? 'confirmed' : 'confirmed';
     $payStatus = ($payment_id === 'AUTO') ? 'paid' : 'paid';
+    // ── CHECK FOR EXISTING BOOKINGS ──────────────────────────────
+// Build date list for the tournament range
+$dateList = [];
+$checkDate = clone $start;
+while ($checkDate < $end) {
+    $dateList[] = "'" . $checkDate->format('Y-m-d') . "'";
+    $checkDate->modify('+1 day');
+}
+$dateListStr = implode(',', $dateList);
+$slotListStr = implode(',', $slotIds);
 
+$conflictRes = mysqli_query($conn,
+    "SELECT bs.booking_date, tps.start_time, tps.end_time
+     FROM booking_slots_tb bs
+     JOIN turf_price_slotstb tps ON tps.price_slot_id = bs.slot_id
+     WHERE bs.slot_id IN ($slotListStr)
+       AND bs.booking_date IN ($dateListStr)
+     LIMIT 1");
+
+if (mysqli_num_rows($conflictRes) > 0) {
+    $conflict = mysqli_fetch_assoc($conflictRes);
+    throw new Exception(
+        "SLOT_CONFLICT::" .
+        $conflict['booking_date'] . "::" .
+        substr($conflict['start_time'], 0, 5) . "-" .
+        substr($conflict['end_time'], 0, 5)
+    );
+}
+// ── END CONFLICT CHECK ───────────────────────────────────────
     $bStmt = mysqli_prepare($conn,
     "INSERT INTO bookingtb 
         (turf_id, sport_id, court_id, user_id, total_amount, booking_date,
