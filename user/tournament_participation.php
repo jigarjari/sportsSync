@@ -1,7 +1,7 @@
 <?php
 session_start();
 include('../db.php');
-
+require_once 'apiBooking/config.php';
 // Must be logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../login.php");
@@ -333,28 +333,33 @@ textarea.form-control{min-height:110px;resize:vertical}
 
     <!-- PAYMENT BOX (shown only if entry fee > 0) -->
     <?php if ($hasFee): ?>
-    <div class="pay-box">
-      <h5><i class="bi bi-lock-fill me-2"></i>Entry Fee Payment Required</h5>
-      <div class="pay-amount">₹<?php echo number_format($entryFee,2); ?> <small>per team</small></div>
-      <p style="color:var(--muted);font-size:.85rem;margin:6px 0 0">
-        Pay securely via Razorpay before submitting your registration.
-      </p>
-      <?php if (!empty($errors['payment'])): ?>
-        <div class="text-danger mt-2"><i class="bi bi-exclamation-circle me-1"></i><?php echo $errors['payment']; ?></div>
-      <?php endif; ?>
-      <div id="paySuccessBox" style="display:none" class="pay-success">
-        <i class="bi bi-check-circle-fill"></i>
-        <span>Payment successful! Now fill the form and submit.</span>
-      </div>
-      <button type="button" class="btn-pay" id="payBtn" onclick="startPayment()">
-        <i class="bi bi-credit-card-fill me-2"></i>Pay ₹<?php echo number_format($entryFee,2); ?>
-      </button>
-    </div>
-    <?php endif; ?>
+<?php $alreadyPaid = !empty($_POST['razorpay_payment_id']); ?>
+<div class="pay-box">
+  <h5><i class="bi bi-lock-fill me-2"></i>Entry Fee Payment Required</h5>
+  <div class="pay-amount">₹<?php echo number_format($entryFee,2); ?> <small>per team</small></div>
+  <p style="color:var(--muted);font-size:.85rem;margin:6px 0 0">
+    Pay securely via Razorpay before submitting your registration.
+  </p>
+  <?php if (!empty($errors['payment'])): ?>
+    <div class="text-danger mt-2"><i class="bi bi-exclamation-circle me-1"></i><?php echo $errors['payment']; ?></div>
+  <?php endif; ?>
+
+  <div id="paySuccessBox" <?php echo $alreadyPaid ? '' : 'style="display:none"'; ?> class="pay-success">
+    <i class="bi bi-check-circle-fill"></i>
+    <span>Payment successful! Now fill the form and submit.</span>
+  </div>
+  <button type="button" class="btn-pay" id="payBtn" 
+    <?php echo $alreadyPaid ? 'style="display:none"' : ''; ?>
+    onclick="startPayment()">
+    <i class="bi bi-credit-card-fill me-2"></i>Pay ₹<?php echo number_format($entryFee,2); ?>
+  </button>
+</div>
+<?php endif; ?>
 
     <form method="post" enctype="multipart/form-data" novalidate id="regForm">
       <input type="hidden" name="tournament_id" value="<?php echo $tournament_id; ?>">
-      <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id" value="">
+      <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id" 
+  value="<?php echo htmlspecialchars($_POST['razorpay_payment_id'] ?? ''); ?>">
 
       <!-- ── PERSONAL DETAILS ── -->
       <div class="section-block">
@@ -415,7 +420,7 @@ textarea.form-control{min-height:110px;resize:vertical}
             </label>
             <input type="number" name="team_size"
               min="1" max="<?php echo $tournament['max_players_per_team']; ?>"
-              value="<?php echo htmlspecialchars($_POST['team_size'] ?? ''); ?>"
+              value="<?php echo htmlspecialchars($tournament['max_players_per_team'] ?? ''); ?>"
               class="form-control <?php echo isset($errors['team_size'])?'is-invalid':''; ?>">
             <div class="invalid-feedback"><?php echo $errors['team_size'] ?? ''; ?></div>
           </div>
@@ -483,7 +488,8 @@ textarea.form-control{min-height:110px;resize:vertical}
       <!-- ── SUBMIT ── -->
       <div class="section-block">
         <?php if ($hasFee): ?>
-          <button type="submit" class="btn btn-primary w-100" id="submitBtn" disabled>
+          <button type="submit" class="btn btn-primary w-100" id="submitBtn" 
+  <?php echo (!empty($_POST['razorpay_payment_id'])) ? '' : 'disabled'; ?>>
             <i class="bi bi-send-fill me-2"></i>Complete Registration
           </button>
           <p class="text-center mt-2" style="font-size:.8rem;color:var(--muted)">
@@ -511,7 +517,7 @@ async function startPayment() {
   btn.textContent = 'Creating order...';
 
   try {
-    const res = await fetch('create_order.php', {
+    const res = await fetch('apiBooking/create_order.php', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({amount: <?php echo $entryFee; ?>})
@@ -526,7 +532,7 @@ async function startPayment() {
     }
 
     const options = {
-      key: order.key_id ?? '',   // if you expose key from create_order
+      key: "<?php echo RAZORPAY_KEY_ID; ?>",  // if you expose key from create_order
       amount: order.amount,
       currency: order.currency,
       name: 'SportSync',
