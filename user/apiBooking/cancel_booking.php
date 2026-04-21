@@ -57,7 +57,7 @@ if(($booking_time - $current_time) <= (36 * 60 * 60)){
     exit;
 }
 
-// 💸 RAZORPAY REFUND
+//RAZORPAY REFUND
 $payment_id = $row['payment_id'];
 $paid_amount = (int) ($row['paid_amount'] ?? 0);
 
@@ -83,7 +83,7 @@ if (!empty($payment_id) && $paid_amount > 0) {
 }
 
 try {
-    // ✅ DELETE slots
+    //  DELETE slots
     mysqli_query($conn, "DELETE FROM booking_slots_tb WHERE booking_id=$booking_id");
 
     $stmt1 = $conn->prepare("SELECT owner_id 
