@@ -41,6 +41,49 @@ if (isset($_SESSION['email']))
 
 
 ?>
+<?php
+$contactStatus = '';
+$contactMessage = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contact_submit'])) {
+  $name = trim($_POST['name'] ?? '');
+  $email = trim($_POST['email'] ?? '');
+  $phone = trim($_POST['phone'] ?? '');
+  $description = trim($_POST['description'] ?? '');
+
+  if ($name === '' || $email === '' || $phone === '' || $description === '') {
+    $contactStatus = 'error';
+    $contactMessage = 'Please fill in all contact form fields.';
+  } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $contactStatus = 'error';
+    $contactMessage = 'Please enter a valid email address.';
+  } else {
+    $stmt = $conn->prepare("INSERT INTO contact_us (name, email, phone, description) VALUES (?, ?, ?, ?)");
+
+    if ($stmt) {
+      $stmt->bind_param("ssss", $name, $email, $phone, $description);
+
+      if ($stmt->execute()) {
+        header("Location: index.php?contact_status=success#contact-us");
+        exit();
+      } else {
+        $contactStatus = 'error';
+        $contactMessage = 'Your message could not be saved right now. Please try again.';
+      }
+
+      $stmt->close();
+    } else {
+      $contactStatus = 'error';
+      $contactMessage = 'Contact form is temporarily unavailable.';
+    }
+  }
+}
+
+if (isset($_GET['contact_status']) && $_GET['contact_status'] === 'success') {
+  $contactStatus = 'success';
+  $contactMessage = 'Your message has been sent successfully.';
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -289,6 +332,129 @@ html {
     display: block;
 }
 
+.contact-section {
+    padding: 2rem 0 4rem;
+}
+
+.contact-wrapper {
+    background: linear-gradient(145deg, #121218, #1a1a22);
+    border: 1px solid rgba(149, 38, 243, 0.22);
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.contact-form-panel {
+    padding: 3rem;
+}
+
+.contact-alert {
+    border-radius: 14px;
+    padding: 0.95rem 1rem;
+    margin-bottom: 1.4rem;
+    font-size: 0.95rem;
+}
+
+.contact-alert-success {
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: #dcfce7;
+}
+
+.contact-alert-error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.32);
+    color: #fee2e2;
+}
+
+.contact-eyebrow {
+    display: inline-block;
+    margin-bottom: 0.7rem;
+    color: #b784ff;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.contact-title {
+    color: #f7f6f2;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+    line-height: 1.05;
+}
+
+.contact-description {
+    color: #d6d6de;
+    text-align: left;
+    margin-bottom: 1.8rem;
+    line-height: 1.7;
+}
+
+.contact-form .form-label {
+    color: #f3f4f6;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.contact-form .form-control {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f7f6f2;
+    border-radius: 12px;
+    padding: 0.95rem 1rem;
+    box-shadow: none;
+}
+
+.contact-form .form-control::placeholder {
+    color: #9fa3b0;
+}
+
+.contact-form .form-control:focus {
+    border-color: #9526F3;
+    box-shadow: 0 0 0 0.2rem rgba(149, 38, 243, 0.14);
+}
+
+.contact-submit-btn {
+    background: linear-gradient(135deg, #9526F3, #b44cff);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 0.95rem 2rem;
+    font-weight: 600;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.contact-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(149, 38, 243, 0.28);
+}
+
+.contact-submit-btn:focus,
+.contact-submit-btn:active {
+    box-shadow: 0 0 0 0.2rem rgba(149, 38, 243, 0.18);
+}
+
+.contact-image-panel {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.contact-image-panel img {
+    width: 100%;
+    height: auto;
+    max-height: 520px;
+    object-fit: cover;
+    display: block;
+    border-radius: 22px;
+}
+
 @media (min-width: 992px) {
     .navbar .container-fluid {
         position: relative;
@@ -312,6 +478,14 @@ html {
         width: calc(100% - 20px);
         margin-top: 10px;
         border-radius: 18px;
+    }
+
+    .contact-form-panel {
+        padding: 2rem 1.5rem;
+    }
+
+    .contact-image-panel img {
+        max-height: 320px;
     }
 }
   </style>
@@ -572,6 +746,53 @@ html {
             <div class="display-4">🏆</div>
             <h5>Play & Enjoy</h5>
             <p>Get Confirmation and Play your Sport!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact-section" id="contact-us" data-aos="fade-up">
+    <div class="container">
+      <div class="contact-wrapper">
+        <div class="row g-0 align-items-stretch">
+          <div class="col-lg-6">
+            <div class="contact-form-panel">
+              <span class="contact-eyebrow">Contact Us</span>
+              <h3 class="contact-title">Let's Plan Your Next Game</h3>
+              <p class="contact-description">
+                Reach out for bookings, partnership help, or any questions about SportsSync. We’ll get back to you with the right support.
+              </p>
+              <?php if ($contactMessage !== ''): ?>
+                <div class="contact-alert <?php echo $contactStatus === 'success' ? 'contact-alert-success' : 'contact-alert-error'; ?>">
+                  <?php echo htmlspecialchars($contactMessage); ?>
+                </div>
+              <?php endif; ?>
+              <form class="contact-form" method="POST" action="#contact-us">
+                <div class="mb-3">
+                  <label for="contactName" class="form-label">Name</label>
+                  <input type="text" class="form-control" id="contactName" name="name" placeholder="Enter your name" value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>">
+                </div>
+                <div class="mb-3">
+                  <label for="contactEmail" class="form-label">Email</label>
+                  <input type="email" class="form-control" id="contactEmail" name="email" placeholder="Enter your email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
+                </div>
+                <div class="mb-3">
+                  <label for="contactPhone" class="form-label">Phone</label>
+                  <input type="tel" class="form-control" id="contactPhone" name="phone" placeholder="Enter your phone number" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>">
+                </div>
+                <div class="mb-4">
+                  <label for="contactDescription" class="form-label">Description</label>
+                  <textarea class="form-control" id="contactDescription" name="description" rows="4" placeholder="Tell us how we can help"><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                </div>
+                <button type="submit" name="contact_submit" class="contact-submit-btn">Send Message</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="contact-image-panel">
+              <img src="images/newbg1.jpg" alt="SportsSync Contact">
+            </div>
           </div>
         </div>
       </div>
