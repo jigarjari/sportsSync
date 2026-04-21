@@ -244,6 +244,21 @@
         width: 100%;
       }
     }
+    .popular-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  color: #000;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.6);
+}
   </style>
 </head>
 

@@ -286,6 +286,18 @@ $tournament_res = mysqli_query($conn, $tournament_sql);
         gap: 10px;
       }
     }
+
+    .boost-timer {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.75);
+      color: #4ade80;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
   </style>
 </head>
 
@@ -313,16 +325,42 @@ $tournament_res = mysqli_query($conn, $tournament_sql);
 
     </div>
 
+<div class="row g-4">
 
-    <div class="row g-4">
+<?php if (mysqli_num_rows($res) > 0) { ?>
+<?php while ($row = mysqli_fetch_assoc($res)) {
 
-      <?php if (mysqli_num_rows($res) > 0) { ?>
-      <?php while ($row = mysqli_fetch_assoc($res)) {
+    // CHECK IF TURF HAS BOOST
+$ad_sql = "SELECT end_date 
+           FROM turf_ads 
+           WHERE turf_id = {$row['turf_id']} 
+           AND is_active = 1
+           ORDER BY end_date DESC 
+           LIMIT 1";
 
-          $img = $row['image']
-              ? "../owner/turf_images/" . $row['image']
-              : "../images/default_turf.jpg";
-       ?>
+$ad_res = mysqli_query($conn, $ad_sql);
+
+$remaining_seconds = null;
+
+if ($ad_res && mysqli_num_rows($ad_res) > 0) {
+    $ad = mysqli_fetch_assoc($ad_res);
+
+    if (!empty($ad['end_date'])) {
+        $remaining_seconds = strtotime($ad['end_date']) - time();
+
+        if ($remaining_seconds <= 0) {
+            $remaining_seconds = null; // expired
+        }
+    }
+}
+
+    $img = $row['image']
+        ? "../owner/turf_images/" . $row['image']
+        : "../images/default_turf.jpg";
+
+?>
+
+     
       <div class="col-xl-3 col-lg-4 col-md-6">
         <div class="turf-card">
 
@@ -331,6 +369,12 @@ $tournament_res = mysqli_query($conn, $tournament_sql);
             <span class="city-badge">
               <?= htmlspecialchars($row['city_name']) ?>
             </span>
+
+            <?php if ($remaining_seconds) { ?>
+            <div class="boost-timer" data-time="<?= $remaining_seconds ?>">
+              Loading...
+            </div>
+            <?php } ?>
           </div>
 
           <div class="turf-body">
@@ -418,23 +462,25 @@ $tournament_res = mysqli_query($conn, $tournament_sql);
                 </p>
 
                 <p class="turf-location">
-  <i class="bi bi-people"></i>
-  Max: <?= $t['max_participation'] ?>
-</p>
+                  <i class="bi bi-people"></i>
+                  Max:
+                  <?= $t['max_participation'] ?>
+                </p>
 
-<!-- Status badge -->
-<p class="turf-location">
-  <i class="bi bi-circle-fill" style="font-size:.6rem;color:<?= $t['status']==='A'?'#4ade80':($t['status']==='R'?'#f87171':'#fbbf24'); ?>"></i>
-  <?= $t['status']==='A'?'Approved':($t['status']==='R'?'Rejected':'Pending Approval'); ?>
-</p>
+                <!-- Status badge -->
+                <p class="turf-location">
+                  <i class="bi bi-circle-fill"
+                    style="font-size:.6rem;color:<?= $t['status']==='A'?'#4ade80':($t['status']==='R'?'#f87171':'#fbbf24'); ?>"></i>
+                  <?= $t['status']==='A'?'Approved':($t['status']==='R'?'Rejected':'Pending Approval'); ?>
+                </p>
 
-<div class="actions mt-2">
-  <a href="tournament_manage.php?id=<?= $t['tournament_id'] ?>" class="btn btn-success">
-    <i class="bi bi-people-fill"></i> Manage Teams
-  </a>
-</div>
+                <div class="actions mt-2">
+                  <a href="tournament_manage.php?id=<?= $t['tournament_id'] ?>" class="btn btn-success">
+                    <i class="bi bi-people-fill"></i> Manage Teams
+                  </a>
+                </div>
 
-</div>
+              </div>
 
             </div>
           </div>
@@ -453,7 +499,34 @@ $tournament_res = mysqli_query($conn, $tournament_sql);
       </div>
     </div>
   </div>
+<script>
+document.querySelectorAll('.boost-timer').forEach(el => {
+  let time = parseInt(el.dataset.time);
 
+  function updateTimer() {
+    if (time <= 0) {
+      el.style.display = "none";
+      return;
+    }
+
+    if (time >= 86400) {
+      let days = Math.floor(time / 86400);
+      let hours = Math.floor((time % 86400) / 3600);
+      el.innerText = `Boost Time: ${days}d ${hours}h`;
+    } else {
+      let h = Math.floor(time / 3600);
+      let m = Math.floor((time % 3600) / 60);
+      let s = time % 60;
+      el.innerText = `Boost Time: ${h}h ${m}m ${s}s`;
+    }
+
+    time--;
+    setTimeout(updateTimer, 1000);
+  }
+
+  updateTimer();
+});
+</script>
 </body>
 
 </html>

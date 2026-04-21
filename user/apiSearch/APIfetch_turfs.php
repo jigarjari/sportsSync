@@ -26,7 +26,6 @@ if (!empty($_POST['sport']) && $_POST['sport'] != 'all') {
   $where[] = "ts.sport_id = $sport";
 }
 
-/* 🔥 THIS LINE FIXES YOUR ERROR */
 $whereSql = 'WHERE 1=1';
 
 if (!empty($where)) {
@@ -94,25 +93,43 @@ $havingSql
 $orderBy
 ";
 
-
 $res = mysqli_query($conn, $sql);
 
 $html = '';
 
 while ($row = mysqli_fetch_assoc($res)) {
+
   $img = $row['image']
     ? "../owner/turf_images/" . $row['image']
     : "../images/default_turf.jpg";
 
+  // ✅ NEW: detect boosted turf
+  $isBoosted = !empty($row['priority']) && $row['priority'] > 0;
+
   $html .= '
 <div class="col-md-4 mb-4">
   <div class="card h-100">
-    <img src="' . $img . '" class="card-img-top" style="height:220px;object-fit:cover;">
+    
+    <div style="position:relative;">
+      <img src="' . $img . '" class="card-img-top" style="height:220px;object-fit:cover;">';
+
+  // ✅ NEW: badge
+  if ($isBoosted) {
+    $html .= '
+      <span class="popular-badge">
+        <i class="bi bi-star-fill"></i> Popular
+      </span>';
+  }
+
+  $html .= '
+    </div>
+
     <div class="card-body">
       <h5 class="card-title">' . $row['turf_name'] . '</h5>
       <p class="card-text">
         <strong>City:</strong> ' . $row['city_name'] . '<br>
         <strong>Location:</strong> ' . $row['location'] . '<br>';
+
   if (isset($row['distance'])) {
     $html .= '<small class="text-muted">' . round($row['distance'], 2) . ' km away</small><br>';
   } else {

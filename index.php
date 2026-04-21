@@ -16,26 +16,33 @@ if (isset($_SESSION['email']))
   {
       $user_id = $_SESSION["user_id"];
 
-      $stmt = $conn->prepare("SELECT COUNT(*) as total FROM notifications WHERE user_id = ?");
-      $stmt->bind_param("i", $user_id);
-      $stmt->execute();
-      $result1 = $stmt->get_result();
-      $count = $result1->fetch_assoc()['total'];
+      $stmt1 = $conn->prepare("
+    SELECT COUNT(*) as total 
+    FROM notifications 
+    WHERE user_id = ? AND is_read = 0
+");
+$stmt1->bind_param("i", $user_id);
+$stmt1->execute();
+$result1 = $stmt1->get_result();
+$count = $result1->fetch_assoc()['total'];
 
-      $stmt = $conn->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC");
-      $stmt->bind_param("i", $user_id);
-      $stmt->execute();
-      $result = $stmt->get_result();
-
+      $stmt2 = $conn->prepare("
+    SELECT title, message, created_at 
+    FROM notifications 
+    WHERE user_id = ? 
+    ORDER BY created_at DESC
+");
+$stmt2->bind_param("i", $user_id);
+$stmt2->execute();
+$result = $stmt2->get_result();
       if (isset($_POST['clear_all'])) {
-          $stmt1 = $conn->prepare("DELETE FROM notifications WHERE user_id = ?");
-          $stmt1->bind_param("i", $user_id);
-          $stmt1->execute();
+    $stmt1 = $conn->prepare("DELETE FROM notifications WHERE user_id = ?");
+    $stmt1->bind_param("i", $user_id);
+    $stmt1->execute();
 
-          // refresh page to update UI
-          header("Location: " . $_SERVER['PHP_SELF']);
-          exit();
-        }
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit();
+}
   }
 
 
@@ -872,8 +879,69 @@ window.addEventListener("pageshow", function () {
   if (popup) popup.style.display = "none";
 });
 
+
+function fetchNotifications() {
+    fetch('fetch_notifications.php')
+    .then(res => res.json())
+    .then(data => {
+
+        // Update badge
+        const badge = document.querySelector('.notif-badge');
+
+        if (data.count > 0) {
+            if (badge) {
+                badge.innerText = data.count > 99 ? '99+' : data.count;
+            } else {
+                // create badge dynamically
+                const bell = document.querySelector('.notif-btn');
+                const span = document.createElement('span');
+                span.className = 'notif-badge';
+                span.innerText = data.count;
+                bell.appendChild(span);
+            }
+        } else if (badge) {
+            badge.remove();
+        }
+
+        // Update list
+        const container = document.getElementById('notifContent');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (data.notifications.length === 0) {
+            container.innerHTML = '<p class="empty">No notifications</p>';
+            return;
+        }
+
+        data.notifications.forEach(n => {
+            container.innerHTML += `
+                <div class="notif-item">
+                    <p style="font-size:18px;color:#9526f3;">
+                        ${n.title}
+                    </p>
+                    <p>${n.message}</p>
+                    <span class="time">${n.created_at}</span>
+                </div>
+            `;
+        });
+        container.innerHTML += `
+    <form method="POST" style="margin-top: 15px;">
+        <button type="submit" name="clear_all" class="clear-btn">
+            Clear All
+        </button>
+    </form>
+`;
+    });
+}
+
 function openSidebar() {
     document.getElementById("notifSidebar").classList.add("active");
+
+    fetch('mark_read.php'); // mark as read
+
+    // instantly remove badge
+    const badge = document.querySelector('.notif-badge');
+    if (badge) badge.remove();
 }
 
 function closeSidebar() {
@@ -894,7 +962,11 @@ function updateFloatingNavbar() {
 
 updateFloatingNavbar();
 window.addEventListener("scroll", updateFloatingNavbar, { passive: true });
+fetchNotifications(); // run immediately
+setInterval(fetchNotifications, 5000);
 </script>
+
+
 <?php if (isset($_SESSION['email'])): ?>
 <div id="notifSidebar" class="notif-sidebar">
 
@@ -906,7 +978,7 @@ window.addEventListener("scroll", updateFloatingNavbar, { passive: true });
     <div id="notifContent" class="notif-content">
 
 <?php if ($result->num_rows > 0): ?>
-    <?php while ($row = $result->fetch_assoc()): ?>
+        <?php while ($row = $result->fetch_assoc()): ?>
         <div class="notif-item">
           <p style="font-size:25px; color:#9526f359; text-align:left;">
               <?php echo htmlspecialchars($row['title']); ?>
@@ -915,13 +987,7 @@ window.addEventListener("scroll", updateFloatingNavbar, { passive: true });
             <span class="time"><?php echo $row['created_at']; ?></span>
         </div>
     <?php endwhile; ?>
-    <?php if ($result->num_rows > 0): ?>
-    <form method="POST" style="margin-top: 15px;">
-        <button type="submit" name="clear_all" class="clear-btn">
-            Clear All
-        </button>
-    </form>
-<?php endif; ?>
+    
 <?php else: ?>
     <p class="empty">No notifications</p>
 <?php endif; ?>
