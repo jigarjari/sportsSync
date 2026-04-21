@@ -78,9 +78,10 @@ $hostedRes = mysqli_stmt_get_result($hostedStmt);
 // Status label helper
 function statusBadge($s) {
     return match($s) {
-        'A' => '<span class="badge-status approved">Approved</span>',
-        'R' => '<span class="badge-status rejected">Rejected</span>',
-        default => '<span class="badge-status pending">Pending</span>',
+        'A'        => '<span class="badge-status approved">Approved</span>',
+        'R'        => '<span class="badge-status rejected">Rejected</span>',
+        'A_UNPAID' => '<span class="badge-status" style="background:rgba(234,179,8,.15);color:#fbbf24;border:1px solid rgba(234,179,8,.3);padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:700">Payment Pending</span>',
+        default    => '<span class="badge-status pending">Pending Review</span>',
     };
 }
 function payBadge($s) {
@@ -510,23 +511,48 @@ body::before {
               <?php echo substr($h['tournament_time'],0,5); ?> – <?php echo substr($h['end_time'],0,5); ?>
             </div>
             <div class="mt-2">
-              <?php echo statusBadge($h['status']); ?>
-              <?php if ($h['status'] === 'P'): ?>
-                <span style="font-size:.78rem;color:var(--muted);margin-left:6px">
-                  Waiting for admin approval
-                </span>
-              <?php endif; ?>
-            </div>
+  <?php echo statusBadge($h['status']); ?>
+  <?php if ($h['status'] === 'P'): ?>
+    <span style="font-size:.78rem;color:var(--muted);margin-left:6px">
+      Waiting for admin approval
+    </span>
+  <?php elseif ($h['status'] === 'A_UNPAID'): ?>
+    <div style="margin-top:10px;padding:12px 16px;border-radius:14px;
+      background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.2)">
+      <div style="color:#fbbf24;font-size:.85rem;font-weight:600;margin-bottom:8px">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Admin approved! Pay slot fee to make your tournament live.
+      </div>
+      <a href="tournament_slot_payment.php?id=<?php echo $h['tournament_id']; ?>"
+         style="display:inline-flex;align-items:center;gap:8px;padding:9px 20px;
+                border-radius:12px;background:linear-gradient(135deg,#9526F3,#6d11bf);
+                color:#fff;font-weight:700;font-size:.88rem;text-decoration:none;
+                transition:.2s">
+        <i class="bi bi-credit-card-fill"></i> Pay & Activate Tournament
+      </a>
+    </div>
+  <?php elseif ($h['status'] === 'R'): ?>
+    <span style="font-size:.78rem;color:#f87171;margin-left:6px">
+      Rejected by admin
+    </span>
+  <?php endif; ?>
+</div>
           </div>
-          <div style="display:flex;gap:8px;align-items:flex-start">
-            <?php if ($totalReg > 0): ?>
-            <button class="btn-manage"
-              onclick="toggleRegs('regs-<?php echo $tid; ?>', this)">
-              <i class="bi bi-people-fill"></i>
-              <?php echo $totalReg; ?> Team<?php echo $totalReg!==1?'s':''; ?>
-            </button>
-            <?php endif; ?>
-          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+  <?php if ($totalReg > 0): ?>
+ <button class="btn-manage"
+  onclick="toggleRegs('regs-<?php echo $tid; ?>', this)"
+  id="toggle-<?php echo $tid; ?>"
+  data-count="<?php echo $totalReg; ?>">
+  <i class="bi bi-people-fill"></i>
+  <?php echo $totalReg; ?> Team<?php echo $totalReg!==1?'s':''; ?>
+</button>
+  <?php endif; ?>
+  <a href="tournament_manage.php?id=<?php echo $tid; ?>" class="btn-manage"
+    style="text-decoration:none">
+    <i class="bi bi-gear-fill"></i> Manage
+  </a>
+</div>
         </div>
 
         <div class="stat-row">
@@ -605,7 +631,12 @@ function switchTab(name, btn) {
 function toggleRegs(id, btn) {
   const el = document.getElementById(id);
   el.classList.toggle('open');
-  btn.textContent = el.classList.contains('open') ? 'Hide Teams' : btn.textContent;
+  if (el.classList.contains('open')) {
+    btn.innerHTML = '<i class="bi bi-chevron-up"></i> Hide Teams';
+  } else {
+    const count = btn.dataset.count;
+    btn.innerHTML = '<i class="bi bi-people-fill"></i> ' + count + ' Team' + (count != 1 ? 's' : '');
+  }
 }
 </script>
 </body>

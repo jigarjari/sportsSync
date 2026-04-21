@@ -66,7 +66,7 @@ if ($created_by === 'VENDOR') {
 } else {
     // Regular users can pick any active/listed turf
     $res = mysqli_query($conn,
-        "SELECT turf_id, turf_name, location FROM turftb WHERE status = 'A'");
+        "SELECT turf_id, turf_name, location FROM turftb WHERE status = 'active'");
     while ($row = mysqli_fetch_assoc($res)) $turfs[] = $row;
 }
 
