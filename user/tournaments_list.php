@@ -110,23 +110,15 @@ function payBadge($s) {
   --muted: #9ca3af;
 }
 *,*::before,*::after{box-sizing:border-box}
-body {
-  margin:0; min-height:100vh;
-  background:#0e0f11;
-  background-image:linear-gradient(#1a1a1a 1px,transparent 1px),
-    linear-gradient(90deg,#1a1a1a 1px,transparent 1px);
-  background-size:40px 40px;
-  color:#f1f5f9;
-  font-family:'Segoe UI',sans-serif;
-}
-body::before {
-  content:"";position:fixed;width:500px;height:500px;
-  background:radial-gradient(circle,#9526F3,transparent 65%);
-  top:-120px;left:-120px;filter:blur(110px);opacity:.35;
-  animation:glow 9s ease-in-out infinite alternate;z-index:-1;
-}
-@keyframes glow{to{transform:translate(120px,80px)}}
-
+body { 
+  background-color: #0e0f11; 
+  background-image: linear-gradient(45deg, #1f1f1f 25%, transparent 25%), 
+                    linear-gradient(-45deg, #1f1f1f 25%, transparent 25%), 
+                    linear-gradient(45deg, transparent 75%, #1f1f1f 75%),
+                    linear-gradient(-45deg, transparent 75%, #1f1f1f 75%); 
+  background-size: 6px 6px; 
+  background-position: 0 0, 0 3px, 3px -3px, -3px 0px; 
+} 
 /* ── TAB NAV ── */
 .tab-nav {
   display:flex;gap:8px;

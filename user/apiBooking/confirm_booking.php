@@ -5,6 +5,7 @@ require '../../db.php';
 require_once '../../libs/phpqrcode/qrlib.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
 include_once('../../env.php');
+
 if (!isset($_SESSION['user_id'])) {
   http_response_code(401);
   echo json_encode(["status" => "error", "msg" => "Login required"]);
@@ -16,7 +17,7 @@ $data = json_decode(file_get_contents("php://input"), true);
 $user_id     = $_SESSION['user_id'];
 $turf_id     = (int)$data['turf_id'];
 $court_id    = (int)$data['court_id'];
-$sport_id    = (int)$data['sport_id']; // ✅ NEW
+$sport_id    = (int)$data['sport_id']; 
 $bookingDate = $data['booking_date'];
 $total       = (int)$data['total'];
 $paid_amount = (int)$data['paid_amount'];
@@ -39,7 +40,7 @@ try {
     throw new Exception("Duplicate payment");
   }
 
-  // 1️⃣ Insert booking (SPORT ID INCLUDED)
+  // Insert booking (SPORT ID INCLUDED)
   $sql = "
   INSERT INTO bookingtb 
   (turf_id, court_id, sport_id, user_id, booking_date, total_amount, paid_amount, status, payment_id, payment_status)
@@ -76,7 +77,7 @@ try {
 
 
 
-  // 💳 Save payment details
+  // Save payment details
 mysqli_query($conn, "
   INSERT INTO payments 
   (booking_id, razorpay_payment_id, amount, currency, status) 
@@ -90,7 +91,7 @@ mysqli_query($conn, "
 
   $qr_token = hash("sha256", $raw . "|" . $secretKey);
 
-   // 📂 Ensure folders exist (for PDF and QR)
+   // Ensure folders exist (for PDF and QR)
    $qrDir  = __DIR__ . "/../../qrcodes/";
    $pdfDir = __DIR__ . "/../../pdfs/";
    
@@ -110,7 +111,7 @@ QRcode::png($qr_token, $qrPath, QR_ECLEVEL_H, 5);
     WHERE booking_id = $booking_id
   ");
 
-  // 2️⃣ Insert booking slots
+  // Insert booking slots
   foreach ($slots as $slot_id) {
     $slot_id = (int)$slot_id;
     $sql = "
