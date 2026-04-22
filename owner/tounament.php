@@ -448,7 +448,8 @@ body{
 .reward-option .ri{font-size:1.2rem;color:#d9b6ff}
 
 /* Toggle switch for external turf */
-.toggle-wrap{display:flex;align-items:center;gap:12px}
+.toggle-wrap{display:flex;align-items:center;gap:12px;padding: 14px 16px;  margin-bottom: 10px;
+}
 .form-check-input.switch{
   width:48px;height:26px;border-radius:13px;cursor:pointer;
   background-color:rgba(255,255,255,0.15);border:none;

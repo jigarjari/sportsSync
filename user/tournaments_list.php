@@ -479,7 +479,7 @@ body::before {
       <div class="empty-state">
         <i class="bi bi-flag"></i>
         <h4>You haven't hosted any tournaments yet</h4>
-        <a href="../owner/tournament.php" class="btn-host mt-3">
+        <a href="../owner/tounament.php" class="btn-host mt-3">
           <i class="bi bi-plus-circle-fill"></i> Host Your First Tournament
         </a>
       </div>
