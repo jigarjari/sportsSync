@@ -44,7 +44,7 @@ $result3 = $stmt3->get_result();
 
 while ($row = $result3->fetch_assoc()) {
     $sportsData[] = $row['sport_id'];
-    $courts[] = $row['no_of_courts'];
+    $courtsData[$row['sport_id']] = $row['no_of_courts'];
 }
 
 //city
@@ -914,8 +914,9 @@ if (!empty($_FILES['turf_images']['name'][0])) {
     </form>
   </div>
   <script>
-  const DB_PRICES = <?= json_encode($priceData) ?>;
-  </script>
+const DB_PRICES = <?= json_encode($priceData) ?>;
+const DB_COURTS = <?= json_encode($courtsData) ?>;
+</script>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -941,6 +942,12 @@ if (!empty($_FILES['turf_images']['name'][0])) {
               input.name = input.name.replace('SPORT_ID', sportId);
               }   
             });
+            // ===== PREFILL COURTS =====
+if (DB_COURTS[sportId]) {
+  clone.querySelector(
+    `input[name="courts[${sportId}]"]`
+  ).value = DB_COURTS[sportId];
+}
               // ===== PREFILL VALUES FROM DATABASE =====
               if (DB_PRICES[sportId] && DB_PRICES[sportId].weekday) {
 
