@@ -1,20 +1,21 @@
 <?php
-include('../../db.php'); // adjust path if needed
-require 'config.php';
-require_once __DIR__ . '/../../vendor/autoload.php';
+include('../../db.php'); 
+require 'config.php';//razorpay key
+require_once __DIR__ . '/../../vendor/autoload.php';//pdf library
 session_start();
 
-$data = json_decode(file_get_contents("php://input"), true);
+$data = json_decode(file_get_contents("php://input"), true);//json data->php
 
+//login check
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(["status" => "error", "msg" => "Login required"]);
     exit;
 }
 
-$booking_id = (int) $data['booking_id'];
-$user_id = $_SESSION['user_id'];
+$booking_id = (int) $data['booking_id'];//booking id
+$user_id = $_SESSION['user_id'];//user id
 
-// 🔹 Get booking details
+// Get booking details
 $sql = "
 SELECT b.booking_id, b.booking_date, b.payment_id, b.paid_amount, b.total_amount, b.turf_id, u.name as user_name, u.mobile as user_mobile, t.turf_name, MIN(s.start_time) as start_time
 FROM bookingtb b
@@ -29,26 +30,26 @@ GROUP BY b.booking_id
 ";
 
 $res = mysqli_query($conn, $sql);
-
+//if query fails
 if (!$res) {
     $err = mysqli_error($conn);
     file_put_contents("error_log.txt", "SQL Error: $err\n", FILE_APPEND);
     echo json_encode(["status" => "error", "msg" => "SQL Error: " . $err]);
     exit;
 }
-
+//alredy cancled or not found
 if (mysqli_num_rows($res) == 0) {
     file_put_contents("error_log.txt", "No rows found for ID $booking_id and User $user_id\n", FILE_APPEND);
     echo json_encode(["status" => "error", "msg" => "Invalid booking or already cancelled. ID: $booking_id"]);
     exit;
 }
-
+//fetch result
 $row = mysqli_fetch_assoc($res);
 
 $booking_time = strtotime($row['booking_date']." ".$row['start_time']);
 $current_time = time();
 
-//🔴 36-hour restriction
+// 36-hour restriction
 if(($booking_time - $current_time) <= (36 * 60 * 60)){
     echo json_encode([
         "status"=>"error",
@@ -65,6 +66,7 @@ if (!empty($payment_id) && $paid_amount > 0) {
     $amount_to_refund = $paid_amount * 100; // in paisa
 
     $payload = json_encode(['amount' => $amount_to_refund]);
+    //start razorpay api request
     $ch = curl_init("https://api.razorpay.com/v1/payments/$payment_id/refund");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -83,9 +85,10 @@ if (!empty($payment_id) && $paid_amount > 0) {
 }
 
 try {
-    //  DELETE slots
+    //free slots
     mysqli_query($conn, "DELETE FROM booking_slots_tb WHERE booking_id=$booking_id");
 
+    //find vendor
     $stmt1 = $conn->prepare("SELECT owner_id 
         FROM turftb 
         WHERE turf_id = (

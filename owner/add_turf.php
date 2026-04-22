@@ -1,6 +1,5 @@
 <?php
 session_start();
-//echo "<script>alert(\"start\")</script>";
 include("../db.php");
 $sportPrefixes = [
   1 => 'F', // Football
@@ -20,7 +19,6 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
     if (empty($_POST['sports']) || empty($_POST['price'])) {
       throw new Exception("Sports and pricing required");
     }
-    //echo "<script>alert(\"ok\")</script>";
     $start_time = $_POST['start_time']; // e.g. 06:00
     $end_time = $_POST['end_time'];   // e.g. 23:00
 
@@ -218,7 +216,7 @@ VALUES (?,?,?,?,?,?,?,?,?)";
 
       foreach ($_POST['hot'][$sport_id] as $hot) {
 
-        // ⛔ Skip incomplete rows
+        // Skip incomplete rows
         if (
           empty($hot['start']) ||
           empty($hot['end']) ||
@@ -236,7 +234,7 @@ VALUES (?,?,?,?,?,?,?,?,?)";
           $hotEnd += 86400;
         }
 
-        // ⛔ Must be hour-aligned
+        // Must be hour-aligned
         if (($hotEnd - $hotStart) % 3600 !== 0) {
           throw new Exception("Hot hour must be full-hour based");
         }
@@ -247,12 +245,12 @@ VALUES (?,?,?,?,?,?,?,?,?)";
           throw new Exception("Invalid hot hour price");
         }
 
-        // ⛔ Must be inside operating hours
+        // Must be inside operating hours
         if ($hotStart < $startTs || $hotEnd > $endTs) {
           throw new Exception("Hot hour outside operating time");
         }
 
-        // 🔁 Update each affected hour slot
+        // Update each affected hour slot
         for ($t = $hotStart; $t < $hotEnd; $t += 3600) {
 
           $slotStart = date("H:i", $t);
@@ -313,16 +311,6 @@ VALUES (?,?,?,?,?,?,?,?,?)";
         $stmt3 = mysqli_prepare($conn, $sql3);
         mysqli_stmt_bind_param($stmt3, "is", $turf_id, $newName);
         mysqli_stmt_execute($stmt3);
-
-        //      if (!empty($_POST['sports'])) {
-        //     foreach ($_POST['sports'] as $sport_id) {
-        //         $sql3 = "INSERT INTO turf_sportstb (turf_id, sport_id)
-        //              VALUES (?, ?)";
-        //         $stmt3 = mysqli_prepare($conn, $sql3);
-        //         mysqli_stmt_bind_param($stmt3, "ii", $turf_id, $sport_id);
-        //         mysqli_stmt_execute($stmt3);
-        //     }
-        // }
       }
     }
     mysqli_commit($conn);
@@ -872,7 +860,6 @@ VALUES (?,?,?,?,?,?,?,?,?)";
     const map = L.map('map').setView(defaultLatLng, 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      //attribution: '© OpenStreetMap'
     }).addTo(map);
 
     const marker = L.marker(defaultLatLng, { draggable: true }).addTo(map);

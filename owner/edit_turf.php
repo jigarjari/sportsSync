@@ -641,8 +641,7 @@ if (!empty($_FILES['turf_images']['name'][0])) {
 
   .vendor-turf-page .form-container {
     margin: 0 auto;
-    padding: 24px 16px;+
-    
+    padding: 24px 16px;
     border-radius: 18px;
   }
 
