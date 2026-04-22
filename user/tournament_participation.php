@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$alreadyRegistered && !$isFull) {
 
     if (empty($errors)) {
         // Upload helper
-        function uploadFile($input, $folder = 'uploads/') {
+        function uploadFile($input, $folder = 'profile/') {
             if (!empty($_FILES[$input]['name'])) {
                 $allowed = ['image/jpeg','image/png','image/jpg'];
                 if (!in_array($_FILES[$input]['type'], $allowed)) return null;
@@ -126,8 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$alreadyRegistered && !$isFull) {
             return null;
         }
 
-        $profile_photo = uploadFile('profile_photo');
-        $team_logo     = uploadFile('team_logo');
+        $profile_photo = uploadFile('profile_photo','profile/');
+        $team_logo     = uploadFile('team_logo','profile/');
 
         $stmt = mysqli_prepare($conn,
             "INSERT INTO tournament_registrations
