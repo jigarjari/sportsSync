@@ -445,11 +445,11 @@ $turf_id = (int) $_GET['turf_id'];
         }
         turfName.innerText = d.turf_name;
         turfLoc.innerText = d.location;
-        turfNameText = d.turf_name; // 🔥 critical
+        turfNameText = d.turf_name; 
       });
 
 
-    /* ---------- EXISTING LOGIC (UNCHANGED) ---------- */
+    /* ---------- Load Sports ---------- */
     function loadSports() {
       fetch(`apiBooking/get_sports.php?turf_id=${turf_id}`)
         .then(r => r.json())
@@ -462,7 +462,6 @@ $turf_id = (int) $_GET['turf_id'];
             let div = document.createElement("div");
             div.className = "sport-card";
 
-            // simple icon mapping (can replace with images later)
             let icon = "🏏";
             if (s.sport_name.toLowerCase().includes("football")) icon = "⚽";
             if (s.sport_name.toLowerCase().includes("badminton")) icon = "🏸";
@@ -674,6 +673,7 @@ $turf_id = (int) $_GET['turf_id'];
         return;
       }
 
+      //Only Pay Half Amount For Booking
       const payableAmount = Math.ceil(total / 2);
 
       fetch("apiBooking/create_order.php", {
@@ -683,7 +683,6 @@ $turf_id = (int) $_GET['turf_id'];
       })
         .then(r => r.json())
         .then(data => {
-          // ✅ Pehle response console mein dekh
           console.log("Order Response:", data);
 
           if (data.error) {
@@ -691,7 +690,7 @@ $turf_id = (int) $_GET['turf_id'];
             return;
           }
 
-          // ✅ order_id check (Now using Real Order ID from Razorpay API)
+          //order_id check 
           if (!data.id) {
             alert("Order ID not received! Check backend logs.");
             return;
@@ -710,7 +709,7 @@ $turf_id = (int) $_GET['turf_id'];
               contact: userSession.mobile
             },
             handler: function (response) {
-              console.log("✅ Payment Success:", response);
+              console.log("Payment Success:", response);
 
               fetch("apiBooking/confirm_booking.php", {
                 method: "POST",
@@ -723,7 +722,7 @@ $turf_id = (int) $_GET['turf_id'];
                     total: total,
                     paid_amount: payableAmount,
                     payment_id: response.razorpay_payment_id,
-                    order_id: response.razorpay_order_id, // ✅ REAL order ID from Razorpay
+                    order_id: response.razorpay_order_id, // REAL order ID from Razorpay
                     slots: selectedSlots.map(s => s.slot_id)
                   })
               })
@@ -731,21 +730,22 @@ $turf_id = (int) $_GET['turf_id'];
                 .then(res => {
                   console.log("Booking Response:", res);
                   if (res.status === "success") {
-                    // 🚀 The Absolute Path fix
+                    // The Absolute Path fix
                     const basePath = window.location.pathname.split('/')[1];
                     const pdf_path = window.location.origin + "/" + basePath + "/" + res.pdf_url;
                     console.log("Redirecting to:", pdf_path);
                     window.location.href = pdf_path;
-                    alert("✅ Booking Confirmed! We are opening your receipt: " + pdf_path);
+                    alert("Booking Confirmed! We are opening your receipt: " + pdf_path);
                     window.location.href = pdf_path;
                   } else {
-                    alert("❌ Database Error: " + res.msg);
+                    alert("Database Error: " + res.msg);
                   }
                 });
             },
             theme: { color: "#9526F3" }
           };
 
+          //razorpay popup create
           var rzp = new Razorpay(options);
 
           rzp.on('payment.failed', function (response) {
@@ -753,6 +753,7 @@ $turf_id = (int) $_GET['turf_id'];
             alert("Payment Failed: " + response.error.description);
           });
 
+          //popup open
           rzp.open();
         })
         .catch(err => {
