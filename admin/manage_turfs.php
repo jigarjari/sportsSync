@@ -12,29 +12,14 @@ if(isset($_POST['toggle_turf'])){
 
     $newStatus = ($res['status'] == 'active') ? 'blocked' : 'active';
 
-    mysqli_query($conn,
-        "UPDATE turftb SET status='$newStatus' WHERE turf_id='$turf_id'"
-    );
+    mysqli_query($conn,"UPDATE turftb SET status='$newStatus' WHERE turf_id='$turf_id'");
 
     header("Location: manage_turfs.php");
     exit;
 }
 
 // FETCH TURFS
-$query = "
-SELECT t.*, u.name AS owner_name, u.id as owner_id, img.image_path
-FROM turftb t
-JOIN user u ON t.owner_id = u.id
-LEFT JOIN turf_imagestb img 
-    ON img.image_id = (
-        SELECT image_id 
-        FROM turf_imagestb 
-        WHERE turf_id = t.turf_id 
-        LIMIT 1
-    )
-ORDER BY t.turf_id DESC
-";
-
+$query = "SELECT t.*, u.name AS owner_name, u.id as owner_id, img.image_path FROM turftb t JOIN user u ON t.owner_id = u.id LEFT JOIN turf_imagestb img ON img.image_id = (SELECT image_id FROM turf_imagestb WHERE turf_id = t.turf_id LIMIT 1)ORDER BY t.turf_id DESC";
 $result = mysqli_query($conn, $query);
 ?>
 

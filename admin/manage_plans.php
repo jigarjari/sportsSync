@@ -6,47 +6,31 @@ if (!isset($_SESSION['admin'])) {
     header("Location: ../signin.php");
     exit;
 }
-
 // ADD PLAN
 if (isset($_POST['add_plan'])) {
-
     $name = $_POST['name'];
     $duration = (int)$_POST['duration'];
     $price = (int)$_POST['price'];
     $priority = (int)$_POST['priority'];
-
-    $conn->query("
-        INSERT INTO ad_plans (name, duration_days, price, priority_score)
-        VALUES ('$name', $duration, $price, $priority)
-    ");
+    $conn->query("INSERT INTO ad_plans (name, duration_days, price, priority_score)VALUES ('$name', $duration, $price, $priority)");
 }
-
 // DELETE PLAN
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $conn->query("DELETE FROM ad_plans WHERE id=$id");
 }
-
 // UPDATE PLAN
 if (isset($_POST['update_plan'])) {
-
     $id = (int)$_POST['id'];
     $name = $_POST['name'];
     $duration = (int)$_POST['duration'];
     $price = (int)$_POST['price'];
     $priority = (int)$_POST['priority'];
-
-    $conn->query("
-        UPDATE ad_plans 
-        SET name='$name', duration_days=$duration, price=$price, priority_score=$priority
-        WHERE id=$id
-    ");
+    $conn->query("UPDATE ad_plans SET name='$name', duration_days=$duration, price=$price, priority_score=$priority WHERE id=$id");
 }
-
 // FETCH
 $plans = $conn->query("SELECT * FROM ad_plans ORDER BY priority_score ASC");
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -58,28 +42,23 @@ $plans = $conn->query("SELECT * FROM ad_plans ORDER BY priority_score ASC");
             background-color: #0e0f11;
             color: #fff;
         }
-
         .card-custom {
             background: #121212;
             border: 1px solid #262626;
             border-radius: 12px;
         }
-
         .text-purple {
             color: #9526F3;
             font-weight: 600;
         }
-
         .form-control {
             background: #121212;
             border: 1px solid #262626;
             color: #fff;
         }
-
         .form-control::placeholder {
             color: #aaa;
         }
-
         /* BUTTON */
         .btn-purple {
             background: transparent;
@@ -91,12 +70,10 @@ $plans = $conn->query("SELECT * FROM ad_plans ORDER BY priority_score ASC");
             overflow: hidden;
             transition: 0.3s;
         }
-
         .btn-purple:hover {
             color: #fff;
             box-shadow: 0 0 12px rgba(149, 38, 243, 0.6);
         }
-
         .btn-purple::before {
             content: "";
             position: absolute;
@@ -107,16 +84,13 @@ $plans = $conn->query("SELECT * FROM ad_plans ORDER BY priority_score ASC");
             transition: 0.4s;
             z-index: 0;
         }
-
         .btn-purple span {
             position: relative;
             z-index: 2;
         }
-
         .btn-purple:hover::before {
             transform: scaleX(1);
         }
-
         table {
             border-radius: 10px;
             overflow: hidden;
@@ -213,18 +187,14 @@ $plans = $conn->query("SELECT * FROM ad_plans ORDER BY priority_score ASC");
         <a href="?delete=<?= $row['id'] ?>" class="btn btn-danger btn-sm">
             Delete
         </a>
-
     </td>
-
 </form>
 </tr>
-
 <?php } ?>
-</tbody>
-
-            </table>
-        </div>
-    </div>
+    </tbody>
+</table>
+</div>
+</div>
 </div>
 </body>
 </html>

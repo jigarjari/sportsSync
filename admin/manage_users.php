@@ -169,7 +169,7 @@ $result = mysqli_query($conn, $query);
 
         <h4 class="mb-3 text-white">User Management</h4>
 
-        <!-- 🔍 FILTERS -->
+        <!-- FILTERS -->
         <form method="GET" class="row g-2 mb-3">
 
             <div class="col-12">
@@ -283,7 +283,7 @@ $result = mysqli_query($conn, $query);
             <?php } ?>
         </div>
 
-        <!-- 📄 PAGINATION -->
+        <!-- PAGINATION -->
         <nav class="mt-4">
             <ul class="pagination justify-content-center">
 

@@ -11,7 +11,7 @@ $res = mysqli_fetch_assoc(mysqli_query($conn, "SELECT role FROM user WHERE id='$
 
 if($res['role'] == 'Vendor'){
     
-    // 3. BLOCK ALL TURFS OF THIS VENDOR
+    // BLOCK ALL TURFS OF THIS VENDOR
     mysqli_query($conn, "
         UPDATE turftb 
         SET status='blocked' 
